@@ -100,5 +100,6 @@ def parse(smiles: str) -> nx.Graph:
             break
         if peek == OPEN_BRACKET:
             g.add_node(atom_index, **parse_atom(stream))
+            atom_index += 1
 
     return g
