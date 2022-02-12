@@ -10,7 +10,7 @@ from typing import Dict, Iterable, TypeVar
 
 import networkx as nx
 
-from pydepict.consts import CLOSE_BRACKET, OPEN_BRACKET, AtomAttribute
+from pydepict.consts import CLOSE_BRACKET, ELEMENTS, OPEN_BRACKET, AtomAttribute
 from pydepict.errors import ParserError
 
 T = TypeVar("T")
@@ -71,9 +71,14 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
             stream.pos,
         )
 
-    attrs["element"] = ""
+    element = ""
     while stream.peek().isalpha():
-        attrs["element"] += next(stream)
+        element += next(stream)
+
+    if element not in ELEMENTS:
+        raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
+
+    attrs["element"] = element
 
     if next(stream) != CLOSE_BRACKET:
         raise ParserError(
