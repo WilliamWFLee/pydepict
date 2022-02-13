@@ -17,7 +17,7 @@ from pydepict.consts import (
     WILDCARD,
     AtomAttribute,
 )
-from pydepict.errors import ParserError
+from .errors import ParserError
 
 T = TypeVar("T")
 
