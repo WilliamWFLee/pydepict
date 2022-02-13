@@ -72,7 +72,17 @@ class Stream:
         return self._peek
 
 
-def parse_element(stream: Stream) -> Optional[str]:
+def parse_element_symbol(stream: Stream) -> Optional[str]:
+    """
+    Parses an element symbol from the stream
+
+    :param stream: The stream to read an element symbol from
+    :type stream: Stream
+    :raises ParserError: If the element symbol is not a known element,
+                         or a valid element symbol is not read
+    :return: The element parsed
+    :rtype: Optional[str]
+    """
     first_char = stream.peek("")
     if (first_char.isalpha() and first_char.isupper()) or stream.peek() == WILDCARD:
         element = next(stream)
@@ -80,11 +90,12 @@ def parse_element(stream: Stream) -> Optional[str]:
         if next_char.isalpha() and next_char.islower():
             element += next(stream)
 
-        if element not in ELEMENTS:
-            raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
+        if element in ELEMENTS:
+            return element
 
-        return element
-    return None
+        raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
+
+    raise ParserError("Expected element symbol", stream.pos)
 
 
 def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
@@ -104,10 +115,7 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
             stream.pos,
         )
 
-    element = parse_element(stream)
-    if element is None:
-        raise ParserError("Expected element symbol", stream.pos)
-    attrs["element"] = element
+    attrs["element"] = parse_element_symbol(stream)
 
     if next(stream) != CLOSE_BRACKET:
         raise ParserError(
