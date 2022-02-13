@@ -1,8 +1,4 @@
-import pytest
-
-from pydepict.consts import ELEMENTS
-from pydepict.errors import ParserError
-from pydepict.parser import Stream, parse_element_symbol
+#!/usr/bin/env python3
 
 """
 tests.parser.test_elements
@@ -10,9 +6,15 @@ tests.parser.test_elements
 Tests the parsing of element symbols
 """
 
+import pytest
+
+from pydepict.consts import ELEMENTS
+from pydepict.errors import ParserError
+from pydepict.parser import Stream, parse_element_symbol
+
 
 @pytest.mark.parametrize("element", ELEMENTS)
-def test_parse_element(element):
+def test_parse_valid_symbols(element):
     """
     Tests parsing a stream of a single element symbol
     """

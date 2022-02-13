@@ -3,7 +3,7 @@
 """
 tests.parser.test_atoms
 
-Tests the parsing of atoms together
+Tests the parsing of atoms
 """
 
 import pytest
