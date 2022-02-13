@@ -15,7 +15,7 @@ BRACKET_ATOM_TEMPLATE = f"{OPEN_BRACKET}{{}}{CLOSE_BRACKET}"
 
 
 @pytest.mark.parametrize("element", ELEMENTS)
-def test_parse_element_only_bracket_atom_attributes(element):
+def test_parse_element_only_bracket_atom_attributes(element: str):
     """
     Tests parsing a stream of a single element-only SMILES string, e.g ``[Au]``
     to test for correct attributes
@@ -27,7 +27,7 @@ def test_parse_element_only_bracket_atom_attributes(element):
 
 
 @pytest.mark.parametrize("element", ELEMENTS)
-def test_parse_element_only_bracket_atom_graph(element):
+def test_parse_element_only_bracket_atom_graph(element: str):
     """
     Tests parsing a stream of an single element-only SMILES string, e.g ``[Au]``
     for correct output graph

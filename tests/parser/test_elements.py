@@ -14,7 +14,7 @@ from pydepict.parser import Stream, parse_element_symbol
 
 
 @pytest.mark.parametrize("element", ELEMENTS)
-def test_parse_valid_symbols(element):
+def test_parse_valid_symbols(element: str):
     """
     Tests parsing a stream of a single element symbol
     """
@@ -26,7 +26,7 @@ def test_parse_valid_symbols(element):
 @pytest.mark.parametrize(
     "element", [element.lower() for element in ELEMENTS if element.isalpha()]
 )
-def test_parse_lowercase_symbols(element):
+def test_parse_lowercase_symbols(element: str):
     """
     Tests parsing lowercase element symbols, which should return :data:`None`
     """
