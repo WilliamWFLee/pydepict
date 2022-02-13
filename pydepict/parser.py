@@ -6,7 +6,7 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
-from typing import Dict, Iterable, TypeVar
+from typing import Dict, Iterable, Optional, TypeVar
 
 import networkx as nx
 
@@ -17,6 +17,7 @@ from pydepict.consts import (
     WILDCARD,
     AtomAttribute,
 )
+
 from .errors import ParserError
 
 T = TypeVar("T")
@@ -71,7 +72,7 @@ class Stream:
         return self._peek
 
 
-def parse_element(stream: Stream) -> str:
+def parse_element(stream: Stream) -> Optional[str]:
     first_char = stream.peek("")
     if (first_char.isalpha() and first_char.isupper()) or stream.peek() == WILDCARD:
         element = next(stream)
@@ -83,8 +84,7 @@ def parse_element(stream: Stream) -> str:
             raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
 
         return element
-
-    raise ParserError("Expected element symbol", stream.pos)
+    return None
 
 
 def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
@@ -104,7 +104,10 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
             stream.pos,
         )
 
-    attrs["element"] = parse_element(stream)
+    element = parse_element(stream)
+    if element is None:
+        raise ParserError("Expected element symbol", stream.pos)
+    attrs["element"] = element
 
     if next(stream) != CLOSE_BRACKET:
         raise ParserError(

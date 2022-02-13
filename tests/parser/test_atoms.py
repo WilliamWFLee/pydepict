@@ -13,7 +13,6 @@ from pydepict.consts import CLOSE_BRACKET, ELEMENTS, OPEN_BRACKET
 from pydepict.errors import ParserError
 from pydepict.parser import Stream, parse, parse_atom, parse_element
 
-
 BRACKET_ATOM_TEMPLATE = f"{OPEN_BRACKET}{{}}{CLOSE_BRACKET}"
 
 
@@ -55,18 +54,18 @@ def test_parse_element_only_bracket_atom_graph(element):
 )
 def test_parse_lowercase_symbols(element):
     """
-    Tests parsing lowercase element symbols, which should be rejected.
+    Tests parsing lowercase element symbols, which should return :data:`None`
     """
     stream = Stream(element)
-    with pytest.raises(ParserError):
-        parse_element(stream)
+    result = parse_element(stream)
+    assert result is None
 
 
 @pytest.mark.parametrize("element", ("Fg", "Ak", "Of", "My", "Dj"))
 def test_parse_nonexistent_symbols(element):
     """
-    Tests parsing nonexistent element symbols, which should be rejected.
+    Tests parsing nonexistent element symbols, which should raise an error
     """
     stream = Stream(element)
     with pytest.raises(ParserError):
-        parse_element(stream)
+        result = parse_element(stream)
