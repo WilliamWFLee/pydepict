@@ -1,7 +1,8 @@
-com3610-dissertation-project
-============================
+pydepict
+========
 
-Repository for dissertation project on generating 2D depictions of chemical structures from SMILES (simplified molecular-input line-entry system) strings, a string notation for chemical structures.
+A library for parsing SMILES (simplified molecular-input line-entry system) strings and generating 2D depictions of chemical structures from these strings,
+developed as part of a 3rd year computer science dissertation project.
 
 License
 -------

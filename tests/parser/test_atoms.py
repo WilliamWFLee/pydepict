@@ -50,4 +50,4 @@ def test_parse_nonexistent_symbols(element):
     """
     with pytest.raises(ParserError):
         stream = Stream(element)
-        parse_element(stream)   
+        parse_element(stream)
