@@ -19,6 +19,8 @@ ELEMENTS = (
     "Nh Fl Mc Lv Ts Og"
 ).split()
 
+WILDCARD = "*"
+
 # SMILES SYMBOL CONSTANTS
 
 OPEN_BRACKET = "["

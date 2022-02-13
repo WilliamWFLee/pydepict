@@ -10,7 +10,13 @@ from typing import Dict, Iterable, TypeVar
 
 import networkx as nx
 
-from pydepict.consts import CLOSE_BRACKET, ELEMENTS, OPEN_BRACKET, AtomAttribute
+from pydepict.consts import (
+    CLOSE_BRACKET,
+    ELEMENTS,
+    OPEN_BRACKET,
+    WILDCARD,
+    AtomAttribute,
+)
 from pydepict.errors import ParserError
 
 T = TypeVar("T")
@@ -28,6 +34,8 @@ class Stream:
         :type: int
     """
 
+    _NO_DEFAULT = object()
+
     def __init__(self, content: Iterable[T]) -> None:
         self._iter = iter(content)
         self._peek = None
@@ -42,16 +50,41 @@ class Stream:
         self.pos += 1
         return next_
 
-    def peek(self) -> T:
+    def peek(self, default: T = _NO_DEFAULT) -> T:
         """
-        Returns the next item in the stream without advancing the stream
+        Returns the next item in the stream without advancing the stream.
 
+        If stream is at end then return :param:`default`.
+
+        :param default: Value to return if stream is at end instead
+        :type: T
         :return: The next item in the stream
         :rtype: T
         """
         if self._peek is None:
-            self._peek = next(self._iter)
+            try:
+                self._peek = next(self._iter)
+            except StopIteration:
+                if default != self._NO_DEFAULT:
+                    return default
+                raise
         return self._peek
+
+
+def parse_element(stream: Stream) -> str:
+    first_char = stream.peek("")
+    if (first_char.isalpha() and first_char.isupper()) or stream.peek() == WILDCARD:
+        element = next(stream)
+        next_char = stream.peek("")
+        if next_char.isalpha() and next_char.islower():
+            element += next(stream)
+
+        if element not in ELEMENTS:
+            raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
+
+        return element
+
+    raise ParserError("Expected element symbol", stream.pos)
 
 
 def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
@@ -71,14 +104,7 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
             stream.pos,
         )
 
-    element = ""
-    while stream.peek().isalpha():
-        element += next(stream)
-
-    if element not in ELEMENTS:
-        raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
-
-    attrs["element"] = element
+    attrs["element"] = parse_element(stream)
 
     if next(stream) != CLOSE_BRACKET:
         raise ParserError(
