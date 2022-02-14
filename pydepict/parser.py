@@ -153,7 +153,7 @@ def parse_hcount(stream: Stream[str]) -> int:
         return count
     elif peek is None:
         return 0
-    raise ParserError("Expected 'H'", stream.pos)
+    raise ParserError(f"Expected 'H', got {peek!r}", stream.pos)
 
 
 @catch_stop_iteration
@@ -184,7 +184,7 @@ def parse_charge(stream: Stream[str]) -> int:
         except ParserError:
             return int(sign + first_digit)
         return int(sign + first_digit + second_digit)
-    raise ParserError("Expected charge symbol", stream.pos)
+    raise ParserError(f"Expected charge symbol, got {stream.peek()!r}", stream.pos)
 
 
 @catch_stop_iteration
