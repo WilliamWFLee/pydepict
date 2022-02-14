@@ -6,14 +6,13 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
+import warnings
 from functools import wraps
 from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
-import warnings
 
 import networkx as nx
 
-from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, AtomAttribute
-
+from .consts import CHARGE_SYMBOLS, ELEMENTS, AtomAttribute
 from .errors import ParserError, ParserWarning
 
 T = TypeVar("T")
