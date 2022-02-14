@@ -7,7 +7,7 @@ Parsing for strings conforming to the OpenSMILES specification
 """
 
 from functools import wraps
-from typing import Dict, Generic, Iterable, Optional, TypeVar
+from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
 
 import networkx as nx
 
@@ -72,18 +72,28 @@ class Stream(Generic[T]):
         return self._peek
 
 
-def catch_eof(func):
+def catch_stop_iteration(func: Callable[[Stream], T]) -> Callable[[Stream], T]:
+    """
+    Decorator for methods that throw :class:`StopIteration`.
+    Wraps the method such that the exception is caught, and :class:`ParserError`
+    is thrown instead.
+
+    :param func: The function to decorate
+    :type func: Callable[[Stream], T]
+    :return: The decorated function
+    :rtype: Callable[[Stream], T]
+    """
     @wraps(func)
-    def wrapper(stream, *args, **kwargs):
+    def wrapper(stream) -> T:
         try:
-            return func(stream, *args, **kwargs)
+            return func(stream)
         except StopIteration:
             raise ParserError("Unexpected end-of-stream", stream.pos)
 
     return wrapper
 
 
-@catch_eof
+@catch_stop_iteration
 def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
     """
     Parses an element symbol from the stream
@@ -110,7 +120,7 @@ def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
     raise ParserError("Expected element symbol", stream.pos)
 
 
-@catch_eof
+@catch_stop_iteration
 def parse_digit(stream: Stream[str]) -> str:
     """
     Parses a single digit from the given stream
@@ -127,7 +137,7 @@ def parse_digit(stream: Stream[str]) -> str:
     raise ParserError(f"Expected digit, got {stream.peek()}", stream.pos)
 
 
-@catch_eof
+@catch_stop_iteration
 def parse_hcount(stream: Stream[str]) -> int:
     """
     Parses hydrogen count from the given stream
@@ -147,7 +157,7 @@ def parse_hcount(stream: Stream[str]) -> int:
     return 0
 
 
-@catch_eof
+@catch_stop_iteration
 def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     """
     Parses the next atom in the given stream.
