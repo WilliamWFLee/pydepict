@@ -23,11 +23,6 @@ ELEMENTS = (
 WILDCARD = "*"
 HYDROGEN = "H"
 
-# SMILES SYMBOL CONSTANTS
-
-OPEN_BRACKET = "["
-CLOSE_BRACKET = "]"
-
 # TYPE CONSTANTS
 
 AtomAttribute = Union[bool, str, int, float]

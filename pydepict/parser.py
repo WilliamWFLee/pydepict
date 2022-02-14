@@ -12,10 +12,8 @@ from typing import Dict, Generic, Iterable, Optional, TypeVar
 import networkx as nx
 
 from pydepict.consts import (
-    CLOSE_BRACKET,
     ELEMENTS,
     HYDROGEN,
-    OPEN_BRACKET,
     WILDCARD,
     AtomAttribute,
 )
@@ -161,18 +159,18 @@ def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     :rtype: Dict[str, AtomAttribute]
     """
     attrs = {}
-    if next(stream) != OPEN_BRACKET:
+    if next(stream) != "[":
         raise ParserError(
-            f"Expected {OPEN_BRACKET} for start of bracket atom, got {next(stream)}",
+            f"Expected '[' for start of bracket atom, got {next(stream)!r}",
             stream.pos,
         )
 
     attrs["element"] = parse_element_symbol(stream)
     attrs["hcount"] = parse_hcount(stream)
 
-    if next(stream) != CLOSE_BRACKET:
+    if next(stream) != "]":
         raise ParserError(
-            f"Expected {CLOSE_BRACKET} for end of bracket atom, got {stream.peek()}",
+            f"Expected ']' for end of bracket atom, got {stream.peek()}",
             stream.pos,
         )
 
@@ -197,7 +195,7 @@ def parse(smiles: str) -> nx.Graph:
             peek: str = stream.peek()
         except StopIteration:
             break
-        if peek == OPEN_BRACKET:
+        if peek == "[":
             g.add_node(atom_index, **parse_atom(stream))
             atom_index += 1
 

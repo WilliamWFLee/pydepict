@@ -8,11 +8,11 @@ Tests the parsing of element symbols
 
 import pytest
 
-from pydepict.consts import CLOSE_BRACKET, ELEMENTS, OPEN_BRACKET
+from pydepict.consts import ELEMENTS
 from pydepict.errors import ParserError
 from pydepict.parser import Stream, parse, parse_atom, parse_element_symbol
 
-BRACKET_ATOM_TEMPLATE = f"{OPEN_BRACKET}{{}}{CLOSE_BRACKET}"
+BRACKET_ATOM_TEMPLATE = "[{}]"
 
 NONEXISTENT_SYMBOLS = "Fg Ak Of My Dj".split()
 
