@@ -20,9 +20,6 @@ ELEMENTS = (
     "Nh Fl Mc Lv Ts Og"
 ).split()
 
-WILDCARD = "*"
-HYDROGEN = "H"
-
 # OTHER SYMBOLS
 
 CHARGE_SYMBOLS = ("-", "+")

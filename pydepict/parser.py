@@ -12,7 +12,7 @@ import warnings
 
 import networkx as nx
 
-from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, HYDROGEN, WILDCARD, AtomAttribute
+from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, AtomAttribute
 
 from .errors import ParserError, ParserWarning
 
@@ -103,7 +103,7 @@ def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
     :rtype: Optional[str]
     """
     first_char = stream.peek()
-    if (first_char.isalpha() and first_char.isupper()) or stream.peek() == WILDCARD:
+    if (first_char.isalpha() and first_char.isupper()) or stream.peek() == "*":
         element = next(stream)
         next_char = stream.peek("")
         if next_char.isalpha() and next_char.islower():
@@ -144,7 +144,7 @@ def parse_hcount(stream: Stream[str]) -> int:
     :return: The hydrogen count, defaults to 0 if not found
     :rtype: int
     """
-    if stream.peek(None) == HYDROGEN:
+    if stream.peek(None) == "H":
         next(stream)
         try:
             count = int(parse_digit(stream))
