@@ -11,7 +11,8 @@ import string
 import pytest
 
 from pydepict.errors import ParserError
-from pydepict.parser import Stream, parse_digit
+from pydepict.parser import parse_digit
+from tests.parser.utils import apply_parse_function
 
 
 @pytest.mark.parametrize("digit", string.digits)
@@ -19,8 +20,7 @@ def test_valid_digits(digit: str):
     """
     Tests valid digits
     """
-    stream = Stream(digit)
-    result = parse_digit(stream)
+    result = apply_parse_function(parse_digit, digit)
     assert result == digit
 
 
@@ -31,6 +31,5 @@ def test_invalid_digits(digit: str):
     """
     Tests invalid digits, using punctuation, and lowercase and uppercase letters
     """
-    stream = Stream(digit)
     with pytest.raises(ParserError):
-        parse_digit(stream)
+        apply_parse_function(parse_digit, digit)
