@@ -143,14 +143,17 @@ def parse_hcount(stream: Stream[str]) -> int:
     :return: The hydrogen count, defaults to 0 if not found
     :rtype: int
     """
-    if stream.peek(None) == "H":
+    peek = stream.peek(None)
+    if peek == "H":
         next(stream)
         try:
             count = int(parse_digit(stream))
         except ParserError:
             count = 1
         return count
-    return 0
+    elif peek is None:
+        return 0
+    raise ParserError("Expected 'H'", stream.pos)
 
 
 @catch_stop_iteration
@@ -181,7 +184,7 @@ def parse_charge(stream: Stream[str]) -> int:
         except ParserError:
             return int(sign + first_digit)
         return int(sign + first_digit + second_digit)
-    return 0
+    raise ParserError("Expected charge symbol", stream.pos)
 
 
 @catch_stop_iteration
@@ -204,8 +207,14 @@ def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     next(stream)
 
     attrs["element"] = parse_element_symbol(stream)
-    attrs["hcount"] = parse_hcount(stream)
-    attrs["charge"] = parse_charge(stream)
+    for attr, parse_method, default in [
+        ("hcount", parse_hcount, 0),
+        ("charge", parse_charge, 0),
+    ]:
+        try:
+            attrs[attr] = parse_method(stream)
+        except ParserError:
+            attrs[attr] = default
 
     if stream.peek() != "]":
         raise ParserError(
