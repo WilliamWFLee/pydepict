@@ -10,48 +10,44 @@ import pytest
 
 from pydepict.consts import ELEMENTS
 from pydepict.errors import ParserError
-from pydepict.parser import Stream, parse, parse_atom, parse_element_symbol
+from pydepict.parser import parse, parse_atom, parse_element_symbol
+
+from .utils import apply_parse_function
 
 BRACKET_ATOM_TEMPLATE = "[{}]"
 
 NONEXISTENT_SYMBOLS = "Fg Ak Of My Dj".split()
 
 
-@pytest.mark.parametrize("element", ELEMENTS)
-def test_parse_valid_symbols(element: str):
+@pytest.mark.parametrize("symbol", ELEMENTS)
+def test_parse_valid_symbols(symbol: str):
     """
     Tests parsing a stream of a single element symbol
     """
-    stream = Stream(element)
-    result = parse_element_symbol(stream)
-    assert result == element
+    result = apply_parse_function(parse_element_symbol, symbol)
+    assert result == symbol
 
-    stream = Stream(BRACKET_ATOM_TEMPLATE.format(element))
-    result = parse_atom(stream)
-    assert result["element"] == element
+    result = apply_parse_function(parse_atom, BRACKET_ATOM_TEMPLATE.format(symbol))
+    assert result["element"] == symbol
 
-    stream = Stream(BRACKET_ATOM_TEMPLATE.format(element))
-    result = parse(stream)
-    assert result.nodes[0]["element"] == element
+    result = apply_parse_function(parse, BRACKET_ATOM_TEMPLATE.format(symbol))
+    assert result.nodes[0]["element"] == symbol
 
 
 @pytest.mark.parametrize(
-    "element",
+    "symbol",
     [element.lower() for element in ELEMENTS if element.isalpha()]  # Lowercase symbols
     + NONEXISTENT_SYMBOLS,
 )
-def test_parse_invalid_symbols(element: str):
+def test_parse_invalid_symbols(symbol: str):
     """
     Tests parsing lowercase element symbols, which should return :data:`None`
     """
-    stream = Stream(element)
     with pytest.raises(ParserError):
-        parse_element_symbol(stream)
+        apply_parse_function(parse_atom, symbol)
 
-    stream = Stream(BRACKET_ATOM_TEMPLATE.format(element))
     with pytest.raises(ParserError):
-        parse_atom(stream)
+        apply_parse_function(parse_atom, BRACKET_ATOM_TEMPLATE.format(symbol))
 
-    stream = Stream(BRACKET_ATOM_TEMPLATE.format(element))
     with pytest.raises(ParserError):
-        parse(stream)
+        apply_parse_function(parse, BRACKET_ATOM_TEMPLATE.format(symbol))
