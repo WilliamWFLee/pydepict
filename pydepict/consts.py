@@ -10,6 +10,7 @@ Constants such as element symbols, bond orders, other parsing symbols
 
 from typing import Union
 
+# ELEMENT SYMBOLS
 
 ELEMENTS = (
     "* H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn "
@@ -20,6 +21,7 @@ ELEMENTS = (
 ).split()
 
 WILDCARD = "*"
+HYDROGEN = "H"
 
 # SMILES SYMBOL CONSTANTS
 

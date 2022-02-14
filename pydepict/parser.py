@@ -6,13 +6,15 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
-from typing import Dict, Iterable, Optional, TypeVar
+from functools import wraps
+from typing import Dict, Generic, Iterable, Optional, TypeVar
 
 import networkx as nx
 
 from pydepict.consts import (
     CLOSE_BRACKET,
     ELEMENTS,
+    HYDROGEN,
     OPEN_BRACKET,
     WILDCARD,
     AtomAttribute,
@@ -23,7 +25,7 @@ from .errors import ParserError
 T = TypeVar("T")
 
 
-class Stream:
+class Stream(Generic[T]):
     """
     Stream class for allowing one-item peekahead.
 
@@ -72,7 +74,19 @@ class Stream:
         return self._peek
 
 
-def parse_element_symbol(stream: Stream) -> Optional[str]:
+def catch_eof(func):
+    @wraps(func)
+    def wrapper(stream, *args, **kwargs):
+        try:
+            return func(stream, *args, **kwargs)
+        except StopIteration:
+            raise ParserError("Unexpected end-of-stream", stream.pos)
+
+    return wrapper
+
+
+@catch_eof
+def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
     """
     Parses an element symbol from the stream
 
@@ -83,7 +97,7 @@ def parse_element_symbol(stream: Stream) -> Optional[str]:
     :return: The element parsed
     :rtype: Optional[str]
     """
-    first_char = stream.peek("")
+    first_char = stream.peek()
     if (first_char.isalpha() and first_char.isupper()) or stream.peek() == WILDCARD:
         element = next(stream)
         next_char = stream.peek("")
@@ -98,7 +112,45 @@ def parse_element_symbol(stream: Stream) -> Optional[str]:
     raise ParserError("Expected element symbol", stream.pos)
 
 
-def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
+@catch_eof
+def parse_digit(stream: Stream[str]) -> str:
+    """
+    Parses a single digit from the given stream
+
+    :param stream: The stream to read from
+    :type stream: Stream
+    :raises ParserError: If character from stream is not a digit
+    :return: The digit parsed
+    :rtype: str
+    """
+    char = stream.peek()
+    if char.isdigit():
+        return next(stream)
+    raise ParserError(f"Expected digit, got {stream.peek()}", stream.pos)
+
+
+@catch_eof
+def parse_hcount(stream: Stream[str]) -> int:
+    """
+    Parses hydrogen count from the given stream
+
+    :param stream: The stream to read from
+    :type stream: Stream
+    :return: The hydrogen count, defaults to 0 if not found
+    :rtype: int
+    """
+    if stream.peek(None) == HYDROGEN:
+        next(stream)
+        try:
+            count = int(parse_digit(stream))
+        except ParserError:
+            count = 1
+        return count
+    return 0
+
+
+@catch_eof
+def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     """
     Parses the next atom in the given stream.
 
@@ -116,6 +168,7 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
         )
 
     attrs["element"] = parse_element_symbol(stream)
+    attrs["hcount"] = parse_hcount(stream)
 
     if next(stream) != CLOSE_BRACKET:
         raise ParserError(
@@ -127,6 +180,15 @@ def parse_atom(stream: Stream) -> Dict[str, AtomAttribute]:
 
 
 def parse(smiles: str) -> nx.Graph:
+    """
+    Parse the given SMILES string to produce a graph representation.
+
+    :param smiles: The SMILES string to parse
+    :type smiles: str
+    :return: The graph represented by the string
+    :rtype: nx.Graph
+    """
+
     g = nx.Graph()
     atom_index = 0
     stream = Stream(smiles)
