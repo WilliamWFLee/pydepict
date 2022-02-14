@@ -23,6 +23,10 @@ ELEMENTS = (
 WILDCARD = "*"
 HYDROGEN = "H"
 
+# OTHER SYMBOLS
+
+CHARGE_SYMBOLS = ("-", "+")
+
 # TYPE CONSTANTS
 
 AtomAttribute = Union[bool, str, int, float]

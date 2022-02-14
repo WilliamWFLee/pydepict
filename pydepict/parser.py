@@ -8,17 +8,13 @@ Parsing for strings conforming to the OpenSMILES specification
 
 from functools import wraps
 from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
+import warnings
 
 import networkx as nx
 
-from pydepict.consts import (
-    ELEMENTS,
-    HYDROGEN,
-    WILDCARD,
-    AtomAttribute,
-)
+from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, HYDROGEN, WILDCARD, AtomAttribute
 
-from .errors import ParserError
+from .errors import ParserError, ParserWarning
 
 T = TypeVar("T")
 
@@ -83,6 +79,7 @@ def catch_stop_iteration(func: Callable[[Stream], T]) -> Callable[[Stream], T]:
     :return: The decorated function
     :rtype: Callable[[Stream], T]
     """
+
     @wraps(func)
     def wrapper(stream) -> T:
         try:
@@ -158,6 +155,37 @@ def parse_hcount(stream: Stream[str]) -> int:
 
 
 @catch_stop_iteration
+def parse_charge(stream: Stream[str]) -> int:
+    """
+    Parses charge from the given stream
+    :param stream: The stream to read from
+    :type stream: Stream
+    :return: The charge, defaults to 0 if not found
+    :rtype: int
+    """
+    if stream.peek(None) in CHARGE_SYMBOLS:
+        sign = next(stream)
+        if stream.peek(None) == sign:
+            next(stream)
+            warnings.warn(
+                ParserWarning(
+                    f"Use of {2 * sign} instead of {sign}2 is deprecated", stream.pos
+                )
+            )
+            return int(sign + "2")
+        try:
+            first_digit = parse_digit(stream)
+        except ParserError:
+            return int(sign + "1")
+        try:
+            second_digit = parse_digit(stream)
+        except ParserError:
+            return int(sign + first_digit)
+        return int(sign + first_digit + second_digit)
+    return 0
+
+
+@catch_stop_iteration
 def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     """
     Parses the next atom in the given stream.
@@ -169,20 +197,23 @@ def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
     :rtype: Dict[str, AtomAttribute]
     """
     attrs = {}
-    if next(stream) != "[":
+    if stream.peek() != "[":
         raise ParserError(
-            f"Expected '[' for start of bracket atom, got {next(stream)!r}",
+            f"Expected '[' for start of bracket atom, got {stream.peek()!r}",
             stream.pos,
         )
+    next(stream)
 
     attrs["element"] = parse_element_symbol(stream)
     attrs["hcount"] = parse_hcount(stream)
+    attrs["charge"] = parse_charge(stream)
 
-    if next(stream) != "]":
+    if stream.peek() != "]":
         raise ParserError(
-            f"Expected ']' for end of bracket atom, got {stream.peek()}",
+            f"Expected ']' for end of bracket atom, got {stream.peek()!r}",
             stream.pos,
         )
+    next(stream)
 
     return attrs
 
