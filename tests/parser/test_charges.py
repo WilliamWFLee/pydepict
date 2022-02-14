@@ -79,3 +79,18 @@ def test_double_charge_symbols(charge_sym: str):
             parse, SYM_ONLY_ATOM_TEMPLATE.format(2 * charge_sym)
         )
     assert result.nodes[0]["charge"] == charge
+
+
+def test_implied_no_charge():
+    """
+    Tests no charge specified implies no charge interpreted.
+    """
+
+    result = apply_parse_function(parse_charge, "")
+    assert result == 0
+
+    result = apply_parse_function(parse_atom, SYM_ONLY_ATOM_TEMPLATE.format(""))
+    assert result["charge"] == 0
+
+    result = apply_parse_function(parse, SYM_ONLY_ATOM_TEMPLATE.format(""))
+    assert result.nodes[0]["charge"] == 0

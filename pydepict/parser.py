@@ -165,7 +165,8 @@ def parse_charge(stream: Stream[str]) -> int:
     :return: The charge, defaults to 0 if not found
     :rtype: int
     """
-    if stream.peek(None) in CHARGE_SYMBOLS:
+    peek = stream.peek(None)
+    if peek in CHARGE_SYMBOLS:
         sign = next(stream)
         if stream.peek(None) == sign:
             next(stream)
@@ -184,6 +185,8 @@ def parse_charge(stream: Stream[str]) -> int:
         except ParserError:
             return int(sign + first_digit)
         return int(sign + first_digit + second_digit)
+    if peek is None:
+        return 0
     raise ParserError(f"Expected charge symbol, got {stream.peek()!r}", stream.pos)
 
 
