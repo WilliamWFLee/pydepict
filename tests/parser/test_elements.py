@@ -44,7 +44,7 @@ def test_parse_invalid_symbols(symbol: str):
     Tests parsing lowercase element symbols, which should return :data:`None`
     """
     with pytest.raises(ParserError):
-        apply_parse_function(parse_atom, symbol)
+        apply_parse_function(parse_element_symbol, symbol)
 
     with pytest.raises(ParserError):
         apply_parse_function(parse_atom, BRACKET_ATOM_TEMPLATE.format(symbol))
