@@ -35,7 +35,7 @@ class Stream(Generic[T]):
     def __init__(self, content: Iterable[T]) -> None:
         self._iter = iter(content)
         self._peek = None
-        self.pos = -1
+        self.pos = 0
 
     def __iter__(self) -> "Stream":
         return self
