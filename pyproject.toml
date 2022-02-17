@@ -11,3 +11,8 @@ include_trailing_comma=true
 force_grid_wrap=0
 use_parentheses=true
 line_length=88
+
+[tool.pytest.ini_options]
+markers = [
+    "must_pass: marks tests as must passing in order for testing to continue."
+]
