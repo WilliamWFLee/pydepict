@@ -10,13 +10,13 @@ import pytest
 
 from pydepict.consts import ELEMENTS
 from pydepict.errors import ParserError
-from pydepict.parser import parse, parse_atom, parse_element_symbol
+from pydepict.parser import parse_element_symbol
 
 from .utils import apply_parse_function
 
 BRACKET_ATOM_TEMPLATE = "[{}]"
 
-NONEXISTENT_SYMBOLS = "Fg Ak Of My Dj".split()
+NONEXISTENT_SYMBOLS = "Mr Ak Xf Ly Dj".split()
 
 
 @pytest.mark.parametrize("symbol", ELEMENTS)
@@ -26,12 +26,6 @@ def test_parse_valid_symbols(symbol: str):
     """
     result = apply_parse_function(parse_element_symbol, symbol)
     assert result == symbol
-
-    result = apply_parse_function(parse_atom, BRACKET_ATOM_TEMPLATE.format(symbol))
-    assert result["element"] == symbol
-
-    result = apply_parse_function(parse, BRACKET_ATOM_TEMPLATE.format(symbol))
-    assert result.nodes[0]["element"] == symbol
 
 
 @pytest.mark.parametrize(
@@ -45,9 +39,3 @@ def test_parse_invalid_symbols(symbol: str):
     """
     with pytest.raises(ParserError):
         apply_parse_function(parse_element_symbol, symbol)
-
-    with pytest.raises(ParserError):
-        apply_parse_function(parse_atom, BRACKET_ATOM_TEMPLATE.format(symbol))
-
-    with pytest.raises(ParserError):
-        apply_parse_function(parse, BRACKET_ATOM_TEMPLATE.format(symbol))
