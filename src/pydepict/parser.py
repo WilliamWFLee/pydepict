@@ -25,7 +25,7 @@ class Stream(Generic[T]):
     .. attribute:: pos
 
         The position within the iterable at which the stream is,
-        or -1 if the stream has not been read yet.
+        initially at 0.
 
         :type: int
     """
