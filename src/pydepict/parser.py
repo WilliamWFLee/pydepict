@@ -12,7 +12,7 @@ from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
 
 import networkx as nx
 
-from .consts import CHARGE_SYMBOLS, ELEMENTS, AtomAttribute
+from .consts import CHARGE_SYMBOLS, ELEMENTS, ELEMENT_FIRST_CHARS, AtomAttribute
 from .errors import ParserError, ParserWarning
 
 T = TypeVar("T")
@@ -102,10 +102,10 @@ def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
     :rtype: Optional[str]
     """
     first_char = stream.peek()
-    if (first_char.isalpha() and first_char.isupper()) or stream.peek() == "*":
+    if first_char in ELEMENT_FIRST_CHARS:
         element = next(stream)
         next_char = stream.peek("")
-        if next_char.isalpha() and next_char.islower():
+        if next_char and first_char + next_char in ELEMENTS:
             element += next(stream)
 
         if element in ELEMENTS:
