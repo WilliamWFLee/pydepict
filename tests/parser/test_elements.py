@@ -8,34 +8,25 @@ Tests the parsing of element symbols
 
 import pytest
 
-from pydepict.consts import ELEMENTS
 from pydepict.errors import ParserError
-from pydepict.parser import parse_element_symbol
+from pydepict.parser import Parser
 
-from .utils import apply_parse_function
+from .utils import apply_parse_method
 
 BRACKET_ATOM_TEMPLATE = "[{}]"
 
-NONEXISTENT_SYMBOLS = "Mr Ak Xf Ly Dj".split()
 
-
-@pytest.mark.parametrize("symbol", ELEMENTS)
-def test_parse_valid_symbols(symbol: str):
+def test_parse_valid_symbols(valid_element: str):
     """
     Tests parsing a stream of a single element symbol
     """
-    result = apply_parse_function(parse_element_symbol, symbol)
-    assert result == symbol
+    result = apply_parse_method(Parser.parse_element_symbol, valid_element)
+    assert result == valid_element
 
 
-@pytest.mark.parametrize(
-    "symbol",
-    [element.lower() for element in ELEMENTS if element.isalpha()]  # Lowercase symbols
-    + NONEXISTENT_SYMBOLS,
-)
-def test_parse_invalid_symbols(symbol: str):
+def test_parse_invalid_symbols(invalid_element: str):
     """
     Tests parsing lowercase element symbols, which should return :data:`None`
     """
     with pytest.raises(ParserError):
-        apply_parse_function(parse_element_symbol, symbol)
+        apply_parse_method(Parser.parse_element_symbol, invalid_element)

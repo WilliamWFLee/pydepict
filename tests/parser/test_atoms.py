@@ -6,15 +6,16 @@ tests.parser.test_atoms
 Tests the parsing of atom strings
 """
 
+from argparse import ArgumentError
 from typing import Dict
 from unittest.mock import DEFAULT
 
 import pytest
 import pytest_mock
 
-import pydepict
 from pydepict.consts import AtomAttribute
-from pydepict.parser import Stream, parse_atom
+from pydepict.parser import Parser, Stream
+from tests.parser.utils import apply_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{element}H{hcount}{charge:+}]"
 
@@ -59,6 +60,11 @@ def atom(
     module_mocker: pytest_mock.MockerFixture,
 ) -> Dict[str, AtomAttribute]:
     def increment_stream_pos_by(value: int):
+        """
+        Returns a :class:`typing.Callable` that can be called
+        to increment the stream position
+        """
+
         def inner(*args, **kwargs):
             for _ in range(value):
                 next(stream)
@@ -66,16 +72,25 @@ def atom(
 
         return inner
 
-    for attr, value, offset in [
-        ("element_symbol", element, 0),
-        ("hcount", hcount, 1),
-        ("charge", charge, 1),
-    ]:
-        mock = module_mocker.patch.object(pydepict.parser, f"parse_{attr}")
-        mock.return_value = value
-        mock.side_effect = increment_stream_pos_by(len(str(value)) + offset)
+    def length(attr: str, value: AtomAttribute):
+        if attr == "element_symbol":
+            return len(value)
+        if attr == "hcount":
+            return len(str(value)) + 1
+        if attr == "charge":
+            return len(f"{value:+}")
+        raise ArgumentError("attr", "is not a recognised element attribute")
 
-    return parse_atom(stream)
+    for attr, value in [
+        ("element_symbol", element),
+        ("hcount", hcount),
+        ("charge", charge),
+    ]:
+        mock = module_mocker.patch.object(Parser, f"parse_{attr}")
+        mock.return_value = value
+        mock.side_effect = increment_stream_pos_by(length(attr, value))
+
+    return apply_parse_method(Parser.parse_atom, stream)
 
 
 def test_atom_element(atom: Dict[str, AtomAttribute], element: str):

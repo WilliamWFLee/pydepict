@@ -12,8 +12,10 @@ from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
 
 import networkx as nx
 
-from .consts import CHARGE_SYMBOLS, ELEMENTS, ELEMENT_FIRST_CHARS, AtomAttribute
+from .consts import CHARGE_SYMBOLS, ELEMENT_FIRST_CHARS, ELEMENTS, AtomAttribute
 from .errors import ParserError, ParserWarning
+
+__all__ = ["Stream", "Parser"]
 
 T = TypeVar("T")
 
@@ -67,188 +69,190 @@ class Stream(Generic[T]):
         return self._peek
 
 
-def catch_stop_iteration(func: Callable[[Stream], T]) -> Callable[[Stream], T]:
+class Parser:
     """
-    Decorator for methods that throw :class:`StopIteration`.
-    Wraps the method such that the exception is caught, and :class:`ParserError`
-    is thrown instead.
+    Class representing a SMILES parser
 
-    :param func: The function to decorate
-    :type func: Callable[[Stream], T]
-    :return: The decorated function
-    :rtype: Callable[[Stream], T]
+    .. attribute:: smiles
+
+        The SMILES string that is parsed by this instance.
+
+        :type: str
     """
 
-    @wraps(func)
-    def wrapper(stream) -> T:
-        try:
-            return func(stream)
-        except StopIteration:
-            raise ParserError("Unexpected end-of-stream", stream.pos)
+    def __init__(self, smiles: str):
+        self.smiles = smiles
 
-    return wrapper
+    def catch_stop_iteration(func: Callable[[], T]) -> Callable[[], T]:
+        """
+        Decorator for methods that throw :class:`StopIteration`.
+        Wraps the method such that the exception is caught, and :class:`ParserError`
+        is thrown instead.
 
+        :param func: The function to decorate
+        :type func: Callable[[Stream], T]
+        :return: The decorated function
+        :rtype: Callable[[Stream], T]
+        """
 
-@catch_stop_iteration
-def parse_element_symbol(stream: Stream[str]) -> Optional[str]:
-    """
-    Parses an element symbol from the stream
+        @wraps(func)
+        def wrapper(self, *args, **kwargs) -> T:
+            try:
+                return func(self, *args, **kwargs)
+            except StopIteration:
+                raise ParserError("Unexpected end-of-stream", self._stream.pos)
 
-    :param stream: The stream to read an element symbol from
-    :type stream: Stream
-    :raises ParserError: If the element symbol is not a known element,
-                         or a valid element symbol is not read
-    :return: The element parsed
-    :rtype: Optional[str]
-    """
-    first_char = stream.peek()
-    if first_char in ELEMENT_FIRST_CHARS:
-        element = next(stream)
-        next_char = stream.peek("")
-        if next_char and first_char + next_char in ELEMENTS:
-            element += next(stream)
+        return wrapper
 
-        if element in ELEMENTS:
-            return element
+    @catch_stop_iteration
+    def parse_element_symbol(self) -> Optional[str]:
+        """
+        Parses an element symbol from the stream
 
-        raise ParserError(f"Invalid element symbol {element!r}", stream.pos)
+        :raises ParserError: If the element symbol is not a known element,
+                            or a valid element symbol is not read
+        :return: The element parsed
+        :rtype: Optional[str]
+        """
+        first_char = self._stream.peek()
+        if first_char in ELEMENT_FIRST_CHARS:
+            element = next(self._stream)
+            next_char = self._stream.peek("")
+            if next_char and first_char + next_char in ELEMENTS:
+                element += next(self._stream)
 
-    raise ParserError("Expected element symbol", stream.pos)
+            if element in ELEMENTS:
+                return element
 
+            raise ParserError(f"Invalid element symbol {element!r}", self._stream.pos)
 
-@catch_stop_iteration
-def parse_digit(stream: Stream[str]) -> str:
-    """
-    Parses a single digit from the given stream
+        raise ParserError("Expected element symbol", self._stream.pos)
 
-    :param stream: The stream to read from
-    :type stream: Stream
-    :raises ParserError: If character from stream is not a digit
-    :return: The digit parsed
-    :rtype: str
-    """
-    char = stream.peek()
-    if char.isdigit():
-        return next(stream)
-    raise ParserError(f"Expected digit, got {stream.peek()}", stream.pos)
+    @catch_stop_iteration
+    def parse_digit(self) -> str:
+        """
+        Parses a single digit from the stream
 
+        :raises ParserError: If character from stream is not a digit
+        :return: The digit parsed
+        :rtype: str
+        """
+        char = self._stream.peek()
+        if char.isdigit():
+            return next(self._stream)
+        raise ParserError(
+            f"Expected digit, got {self._stream.peek()}", self._stream.pos
+        )
 
-@catch_stop_iteration
-def parse_hcount(stream: Stream[str]) -> int:
-    """
-    Parses hydrogen count from the given stream
+    @catch_stop_iteration
+    def parse_hcount(self) -> int:
+        """
+        Parses hydrogen count from the stream
 
-    :param stream: The stream to read from
-    :type stream: Stream
-    :return: The hydrogen count, defaults to 0 if not found
-    :rtype: int
-    """
-    peek = stream.peek(None)
-    if peek == "H":
-        next(stream)
-        try:
-            count = int(parse_digit(stream))
-        except ParserError:
-            count = 1
-        return count
-    elif peek is None:
-        return 0
-    raise ParserError(f"Expected 'H', got {peek!r}", stream.pos)
+        :raises ParserError: If the next symbol in the stream is not 'H'
+        :return: The hydrogen count, defaults to 0 if at stream end
+        :rtype: int
+        """
+        peek = self._stream.peek(None)
+        if peek == "H":
+            next(self._stream)
+            try:
+                count = int(self.parse_digit())
+            except ParserError:
+                count = 1
+            return count
+        elif peek is None:
+            return 0
+        raise ParserError(f"Expected 'H', got {peek!r}", self._stream.pos)
 
+    @catch_stop_iteration
+    def parse_charge(self) -> int:
+        """
+        Parses charge from the given stream
 
-@catch_stop_iteration
-def parse_charge(stream: Stream[str]) -> int:
-    """
-    Parses charge from the given stream
-    :param stream: The stream to read from
-    :type stream: Stream
-    :return: The charge, defaults to 0 if not found
-    :rtype: int
-    """
-    peek = stream.peek(None)
-    if peek in CHARGE_SYMBOLS:
-        sign = next(stream)
-        if stream.peek(None) == sign:
-            next(stream)
-            warnings.warn(
-                ParserWarning(
-                    f"Use of {2 * sign} instead of {sign}2 is deprecated", stream.pos
+        :return: The charge, defaults to 0 if not found
+        :rtype: int
+        """
+        peek = self._stream.peek(None)
+        if peek in CHARGE_SYMBOLS:
+            sign = next(self._stream)
+            if self._stream.peek(None) == sign:
+                next(self._stream)
+                warnings.warn(
+                    ParserWarning(
+                        f"Use of {2 * sign} instead of {sign}2 is deprecated",
+                        self._stream.pos,
+                    )
                 )
+                return int(sign + "2")
+            try:
+                first_digit = self.parse_digit()
+            except ParserError:
+                return int(sign + "1")
+            try:
+                second_digit = self.parse_digit()
+            except ParserError:
+                return int(sign + first_digit)
+            return int(sign + first_digit + second_digit)
+        if peek is None:
+            return 0
+        raise ParserError(
+            f"Expected charge symbol, got {self._stream.peek()!r}", self._stream.pos
+        )
+
+    @catch_stop_iteration
+    def parse_atom(self) -> Dict[str, AtomAttribute]:
+        """
+        Parses the next atom in the stream.
+
+        :return: A dictionary of atom attributes
+        :rtype: Dict[str, AtomAttribute]
+        """
+        attrs = {}
+        if self._stream.peek() != "[":
+            raise ParserError(
+                f"Expected '[' for start of bracket atom, got {self._stream.peek()!r}",
+                self._stream.pos,
             )
-            return int(sign + "2")
-        try:
-            first_digit = parse_digit(stream)
-        except ParserError:
-            return int(sign + "1")
-        try:
-            second_digit = parse_digit(stream)
-        except ParserError:
-            return int(sign + first_digit)
-        return int(sign + first_digit + second_digit)
-    if peek is None:
-        return 0
-    raise ParserError(f"Expected charge symbol, got {stream.peek()!r}", stream.pos)
+        next(self._stream)
 
+        attrs["element"] = self.parse_element_symbol()
+        for attr, parse_method, default in [
+            ("hcount", self.parse_hcount, 0),
+            ("charge", self.parse_charge, 0),
+        ]:
+            try:
+                attrs[attr] = parse_method()
+            except ParserError:
+                attrs[attr] = default
 
-@catch_stop_iteration
-def parse_atom(stream: Stream[str]) -> Dict[str, AtomAttribute]:
-    """
-    Parses the next atom in the given stream.
+        if self._stream.peek() != "]":
+            raise ParserError(
+                f"Expected ']' for end of bracket atom, got {self._stream.peek()!r}",
+                self._stream.pos,
+            )
+        next(self._stream)
 
-    :param stream: The character string to read from
-    :type stream: Stream
-    :raises ParserError: If opening and closing brackets are expected, but not encountered # noqa: E501
-    :return: A dictionary of atom attributes
-    :rtype: Dict[str, AtomAttribute]
-    """
-    attrs = {}
-    if stream.peek() != "[":
-        raise ParserError(
-            f"Expected '[' for start of bracket atom, got {stream.peek()!r}",
-            stream.pos,
-        )
-    next(stream)
+        return attrs
 
-    attrs["element"] = parse_element_symbol(stream)
-    for attr, parse_method, default in [
-        ("hcount", parse_hcount, 0),
-        ("charge", parse_charge, 0),
-    ]:
-        try:
-            attrs[attr] = parse_method(stream)
-        except ParserError:
-            attrs[attr] = default
+    def parse(self) -> nx.Graph:
+        """
+        Parse the given SMILES string to produce a graph representation.
 
-    if stream.peek() != "]":
-        raise ParserError(
-            f"Expected ']' for end of bracket atom, got {stream.peek()!r}",
-            stream.pos,
-        )
-    next(stream)
+        :return: The graph represented by the string
+        :rtype: nx.Graph
+        """
 
-    return attrs
+        g = nx.Graph()
+        atom_index = 0
+        self._stream = Stream(self.smiles)
+        while True:
+            try:
+                peek: str = self._stream.peek()
+            except StopIteration:
+                break
+            if peek == "[":
+                g.add_node(atom_index, **self.parse_atom())
+                atom_index += 1
 
-
-def parse(smiles: str) -> nx.Graph:
-    """
-    Parse the given SMILES string to produce a graph representation.
-
-    :param smiles: The SMILES string to parse
-    :type smiles: str
-    :return: The graph represented by the string
-    :rtype: nx.Graph
-    """
-
-    g = nx.Graph()
-    atom_index = 0
-    stream = Stream(smiles)
-    while True:
-        try:
-            peek: str = stream.peek()
-        except StopIteration:
-            break
-        if peek == "[":
-            g.add_node(atom_index, **parse_atom(stream))
-            atom_index += 1
-
-    return g
+        return g

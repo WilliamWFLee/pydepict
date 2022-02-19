@@ -6,30 +6,24 @@ tests.parser.test_digit
 Tests the parsing of element symbols
 """
 
-import string
-
 import pytest
 
 from pydepict.errors import ParserError
-from pydepict.parser import parse_digit
-from tests.parser.utils import apply_parse_function
+from pydepict.parser import Parser
+from tests.parser.utils import apply_parse_method
 
 
-@pytest.mark.parametrize("digit", string.digits)
-def test_valid_digits(digit: str):
+def test_valid_digits(valid_digit: str):
     """
     Tests valid digits
     """
-    result = apply_parse_function(parse_digit, digit)
-    assert result == digit
+    result = apply_parse_method(Parser.parse_digit, valid_digit)
+    assert result == valid_digit
 
 
-@pytest.mark.parametrize(
-    "digit", string.punctuation + string.ascii_lowercase + string.ascii_uppercase
-)
-def test_invalid_digits(digit: str):
+def test_invalid_digits(invalid_digit: str):
     """
     Tests invalid digits, using punctuation, and lowercase and uppercase letters
     """
     with pytest.raises(ParserError):
-        apply_parse_function(parse_digit, digit)
+        apply_parse_method(Parser.parse_digit, invalid_digit)

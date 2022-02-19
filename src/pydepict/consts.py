@@ -6,8 +6,6 @@ pydepict.consts
 Constants such as element symbols, bond orders, other parsing symbols
 """
 
-# CHEMICAL CONSTANTS
-
 from typing import Union
 
 # ELEMENT SYMBOLS
@@ -24,6 +22,10 @@ ELEMENT_FIRST_CHARS = set(element[0] for element in ELEMENTS)
 # OTHER SYMBOLS
 
 CHARGE_SYMBOLS = ("-", "+")
+
+# PARSER SPECIFICATIONS
+
+MIN_CHARGE_MAGNITUDE = 15
 
 # TYPE CONSTANTS
 
