@@ -175,7 +175,7 @@ class Parser:
         return int(number)
 
     @_catch_stop_iteration
-    def parse_isotope(self) -> Optional[int]:
+    def parse_isotope(self) -> int:
         """
         Parses an isotope specification from the stream
 
@@ -221,12 +221,10 @@ class Parser:
         Parses hydrogen count from the stream
 
         :raises ParserError: If the next symbol in the stream is not 'H'
-        :return: The hydrogen count, defaults to 0 if at stream end
+        :return: The hydrogen count
         :rtype: int
         """
-        h = self.expect(("H",), None)
-        if h is None:
-            return 0
+        self.expect(("H",))
         try:
             count = int(self.parse_digit())
         except ParserError:
@@ -237,14 +235,12 @@ class Parser:
     @_catch_stop_iteration
     def parse_charge(self) -> int:
         """
-        Parses charge from the given stream
+        Parses a charge from the stream
 
-        :return: The charge, defaults to 0 if not found
+        :return: The charge parsed
         :rtype: int
         """
-        sign = self.expect(CHARGE_SYMBOLS, None)
-        if sign is None:
-            return 0
+        sign = self.expect(CHARGE_SYMBOLS)
         if self._stream.peek(None) == sign:
             next(self._stream)
             warnings.warn(

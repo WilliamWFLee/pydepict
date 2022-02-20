@@ -8,6 +8,7 @@ Tests the parsing of hydrogen counts
 
 import pytest
 import pytest_mock
+from pydepict.errors import ParserError
 from pydepict.parser import Parser
 
 from .utils import apply_parse_method, patch_parse_method
@@ -37,9 +38,9 @@ def test_parse_implied_single_hcount():
     assert result == 1
 
 
-def test_parse_implied_no_hcount():
+def test_parse_no_hcount():
     """
-    Tests implied hydrogen count for no hydrogen count, i.e. [*] implies 0.
+    Tests no hydrogen count, with expected :class:`ParserError`.
     """
-    result = apply_parse_method(Parser.parse_hcount, "")
-    assert result == 0
+    with pytest.raises(ParserError):
+        apply_parse_method(Parser.parse_hcount, "")

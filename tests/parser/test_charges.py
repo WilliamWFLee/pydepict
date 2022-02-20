@@ -9,7 +9,7 @@ Tests the parsing of charges
 import pytest
 import pytest_mock
 
-from pydepict.errors import ParserWarning
+from pydepict.errors import ParserError, ParserWarning
 from pydepict.parser import Parser
 
 from .utils import apply_parse_method, patch_parse_method
@@ -52,9 +52,9 @@ def test_double_charge_symbols(valid_double_symbol_charge: str):
     assert result == int(f"{valid_double_symbol_charge[0]}2")
 
 
-def test_implied_no_charge():
+def test_no_charge():
     """
-    Tests no charge specified implies no charge interpreted.
+    Tests no charge specified, with expected :class:`ParserError`
     """
-    result = apply_parse_method(Parser.parse_charge, "")
-    assert result == 0
+    with pytest.raises(ParserError):
+        apply_parse_method(Parser.parse_charge, "")
