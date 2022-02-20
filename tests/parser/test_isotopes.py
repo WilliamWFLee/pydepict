@@ -8,6 +8,7 @@ Tests the parsing of isotope specifications
 
 import pytest
 import pytest_mock
+from pydepict.errors import ParserError
 
 from pydepict.parser import Parser
 
@@ -15,8 +16,8 @@ from .utils import apply_parse_method, patch_parse_method
 
 
 @pytest.fixture
-def isotope(valid_isotope: int, module_mocker: pytest_mock.MockerFixture) -> int:
-    patch_parse_method(module_mocker, "number", return_value=valid_isotope)
+def isotope(valid_isotope: int, mocker: pytest_mock.MockerFixture) -> int:
+    patch_parse_method(mocker, "number", return_value=valid_isotope)
     return valid_isotope
 
 
@@ -34,3 +35,11 @@ def test_valid_padded_isotope(isotope: int):
     """
     result = apply_parse_method(Parser.parse_isotope, f"{isotope:0>4}")
     assert result == isotope
+
+
+def test_no_isotope():
+    """
+    Tests parsing no isotope specification
+    """
+    with pytest.raises(ParserError):
+        apply_parse_method(Parser.parse_isotope, "")

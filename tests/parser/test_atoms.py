@@ -7,7 +7,7 @@ Tests the parsing of atom strings
 """
 
 from argparse import ArgumentError
-from typing import Dict
+from typing import Dict, Optional
 from unittest.mock import DEFAULT
 
 import pytest
@@ -17,7 +17,12 @@ from pydepict.consts import AtomAttribute
 from pydepict.parser import Parser, Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
-SINGLE_ATOM_TEMPLATE = "[{element}H{hcount}{charge:+}]"
+SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}]"
+
+
+@pytest.fixture(scope="module")
+def isotope() -> int:
+    return 1343
 
 
 @pytest.fixture(scope="module")
@@ -36,8 +41,14 @@ def charge() -> int:
 
 
 @pytest.fixture(scope="module")
-def smiles(element: str, hcount: int, charge: int) -> int:
+def smiles(
+    isotope: int,
+    element: str,
+    hcount: int,
+    charge: int,
+) -> Dict[str, AtomAttribute]:
     attrs = {
+        "isotope": isotope,
         "element": element,
         "hcount": hcount,
         "charge": charge,
@@ -53,6 +64,7 @@ def stream(smiles: str) -> Stream:
 
 @pytest.fixture(scope="module")
 def atom(
+    isotope: int,
     element: str,
     hcount: int,
     charge: int,
@@ -75,6 +87,8 @@ def atom(
     def length(attr: str, value: AtomAttribute):
         if attr == "element_symbol":
             return len(value)
+        if attr == "isotope":
+            return len(str(value))
         if attr == "hcount":
             return len(str(value)) + 1
         if attr == "charge":
@@ -82,6 +96,7 @@ def atom(
         raise ArgumentError("attr", "is not a recognised element attribute")
 
     for attr, value in [
+        ("isotope", isotope),
         ("element_symbol", element),
         ("hcount", hcount),
         ("charge", charge),
@@ -91,6 +106,10 @@ def atom(
         )
 
     return apply_parse_method(Parser.parse_atom, stream)
+
+
+def test_atom_isotope(atom: Dict[str, AtomAttribute], isotope: Optional[int]):
+    assert atom["isotope"] == isotope
 
 
 def test_atom_element(atom: Dict[str, AtomAttribute], element: str):

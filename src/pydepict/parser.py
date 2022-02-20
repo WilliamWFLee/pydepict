@@ -8,7 +8,7 @@ Parsing for strings conforming to the OpenSMILES specification
 
 import warnings
 from functools import wraps
-from typing import Callable, Dict, Generic, Iterable, TypeVar
+from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
 
 import networkx as nx
 
@@ -128,12 +128,12 @@ class Parser:
         return int(number)
 
     @catch_stop_iteration
-    def parse_isotope(self) -> int:
+    def parse_isotope(self) -> Optional[int]:
         """
         Parses an isotope specification from the stream
 
         :return: The isotope number parsed
-        :rtype: int
+        :rtype: Optional[int]
         """
         return self.parse_number()
 
