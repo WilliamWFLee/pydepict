@@ -6,18 +6,26 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
+from ctypes import Union
 import warnings
 from functools import wraps
-from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
+from typing import Callable, Dict, Generic, Iterable, Optional, Type, TypeVar
 
 import networkx as nx
 
-from .consts import CHARGE_SYMBOLS, ELEMENT_FIRST_CHARS, ELEMENTS, AtomAttribute
-from .errors import ParserError, ParserWarning
+from .consts import (
+    CHARGE_SYMBOLS,
+    ELEMENT_FIRST_CHARS,
+    ELEMENTS,
+    TERMINATORS,
+    AtomAttribute,
+)
+from .errors import ParserError, ParserStateException, ParserWarning
 
 __all__ = ["Stream", "Parser"]
 
 T = TypeVar("T")
+E = TypeVar("E", Type[ParserError], Type[ParserWarning])
 
 
 class Stream(Generic[T]):
@@ -83,7 +91,7 @@ class Parser:
     def __init__(self, smiles: str):
         self.smiles = smiles
 
-    def catch_stop_iteration(func: Callable[[], T]) -> Callable[[], T]:
+    def _catch_stop_iteration(func: Callable[[], T]) -> Callable[[], T]:
         """
         Decorator for methods that throw :class:`StopIteration`.
         Wraps the method such that the exception is caught, and :class:`ParserError`
@@ -100,11 +108,19 @@ class Parser:
             try:
                 return func(self, *args, **kwargs)
             except StopIteration:
-                raise ParserError("Unexpected end-of-stream", self._stream.pos)
+                raise self._new_exception("Unexpected end-of-stream")
 
         return wrapper
 
-    @catch_stop_iteration
+    def _new_exception(self, msg: str, exc_type: E = ParserError) -> E:
+        stream = getattr(self, "_stream", None)
+        if stream is None:
+            raise ParserStateException(
+                "New parser error cannot be instantiated if stream does not exist"
+            )
+        return exc_type(msg, stream.pos)
+
+    @_catch_stop_iteration
     def parse_number(self) -> int:
         """
         Parse a number (integer) from the stream
@@ -121,13 +137,11 @@ class Parser:
                 break
 
         if not number:
-            raise ParserError(
-                f"Expected digit, got {self._stream.peek()}", self._stream.pos
-            )
+            raise self._new_exception(f"Expected digit, got {self._stream.peek()}")
 
         return int(number)
 
-    @catch_stop_iteration
+    @_catch_stop_iteration
     def parse_isotope(self) -> Optional[int]:
         """
         Parses an isotope specification from the stream
@@ -137,7 +151,7 @@ class Parser:
         """
         return self.parse_number()
 
-    @catch_stop_iteration
+    @_catch_stop_iteration
     def parse_element_symbol(self) -> str:
         """
         Parses an element symbol from the stream
@@ -157,11 +171,11 @@ class Parser:
             if element in ELEMENTS:
                 return element
 
-            raise ParserError(f"Invalid element symbol {element!r}", self._stream.pos)
+            raise self._new_exception(f"Invalid element symbol {element!r}")
 
-        raise ParserError("Expected element symbol", self._stream.pos)
+        raise self._new_exception("Expected element symbol")
 
-    @catch_stop_iteration
+    @_catch_stop_iteration
     def parse_digit(self) -> str:
         """
         Parses a single digit from the stream
@@ -173,11 +187,9 @@ class Parser:
         char = self._stream.peek()
         if char.isdigit():
             return next(self._stream)
-        raise ParserError(
-            f"Expected digit, got {self._stream.peek()}", self._stream.pos
-        )
+        raise self._new_exception(f"Expected digit, got {self._stream.peek()}")
 
-    @catch_stop_iteration
+    @_catch_stop_iteration
     def parse_hcount(self) -> int:
         """
         Parses hydrogen count from the stream
@@ -196,9 +208,9 @@ class Parser:
             return count
         elif peek is None:
             return 0
-        raise ParserError(f"Expected 'H', got {peek!r}", self._stream.pos)
+        raise self._new_exception(f"Expected 'H', got {peek!r}")
 
-    @catch_stop_iteration
+    @_catch_stop_iteration
     def parse_charge(self) -> int:
         """
         Parses charge from the given stream
@@ -212,9 +224,9 @@ class Parser:
             if self._stream.peek(None) == sign:
                 next(self._stream)
                 warnings.warn(
-                    ParserWarning(
+                    self._new_exception(
                         f"Use of {2 * sign} instead of {sign}2 is deprecated",
-                        self._stream.pos,
+                        ParserWarning,
                     )
                 )
                 return int(sign + "2")
@@ -229,23 +241,25 @@ class Parser:
             return int(sign + first_digit + second_digit)
         if peek is None:
             return 0
-        raise ParserError(
-            f"Expected charge symbol, got {self._stream.peek()!r}", self._stream.pos
+        raise self._new_exception(
+            f"Expected charge symbol, got {self._stream.peek()!r}"
         )
 
-    @catch_stop_iteration
-    def parse_atom(self) -> Dict[str, AtomAttribute]:
+    @_catch_stop_iteration
+    def parse_bracket_atom(self) -> Dict[str, AtomAttribute]:
         """
-        Parses the next atom in the stream.
+        Parses a bracket atom from the stream
 
+        :raises ParserError: If the opening and closing bracket is not found,
+                             or no element is found
         :return: A dictionary of atom attributes
         :rtype: Dict[str, AtomAttribute]
         """
+
         attrs = {}
         if self._stream.peek() != "[":
-            raise ParserError(
-                f"Expected '[' for start of bracket atom, got {self._stream.peek()!r}",
-                self._stream.pos,
+            raise self._new_exception(
+                f"Expected '[' for start of bracket atom, got {self._stream.peek()!r}"
             )
         next(self._stream)
 
@@ -265,13 +279,51 @@ class Parser:
                 attrs[attr] = default
 
         if self._stream.peek() != "]":
-            raise ParserError(
+            raise self._new_exception(
                 f"Expected ']' for end of bracket atom, got {self._stream.peek()!r}",
-                self._stream.pos,
             )
         next(self._stream)
 
         return attrs
+
+    @_catch_stop_iteration
+    def parse_atom(self) -> Dict[str, AtomAttribute]:
+        """
+        Parses an atom in the stream.
+
+        :raises ParserError: If no atom is found
+        :return: A dictionary of atom attributes
+        :rtype: Dict[str, AtomAttribute]
+        """
+        return self.parse_bracket_atom()
+
+    @_catch_stop_iteration
+    def parse_line(self):
+        """
+        Parses a line. A line is an atom, atoms that follow it and any branches
+        connected to it.
+
+        :raises ParserError: If no atom for the start of the line is found
+        """
+
+        self._g.add_node(self._atom_index, **self.parse_atom())
+        self._atom_index += 1
+
+    def parse_terminator(self) -> None:
+        """
+        Parses a terminator.
+
+        :raises ParserError: If terminator is not found, and stream is not at end.
+        """
+        try:
+            if self._stream.peek() not in TERMINATORS:
+                raise self._new_exception(
+                    f"Expected terminator, got {self._stream.peek()}"
+                )
+        except StopIteration:
+            pass
+
+        return None
 
     def parse(self) -> nx.Graph:
         """
@@ -280,17 +332,18 @@ class Parser:
         :return: The graph represented by the string
         :rtype: nx.Graph
         """
-
-        g = nx.Graph()
-        atom_index = 0
+        self._g = nx.Graph()
+        self._atom_index = 0
         self._stream = Stream(self.smiles)
-        while True:
-            try:
-                peek: str = self._stream.peek()
-            except StopIteration:
-                break
-            if peek == "[":
-                g.add_node(atom_index, **self.parse_atom())
-                atom_index += 1
 
-        return g
+        try:
+            self.parse_line()
+        except ParserError:
+            pass
+
+        self.parse_terminator()
+
+        try:
+            return self._g
+        finally:
+            del self._g, self._atom_index, self._stream

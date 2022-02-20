@@ -22,6 +22,7 @@ ELEMENT_FIRST_CHARS = set(element[0] for element in ELEMENTS)
 # OTHER SYMBOLS
 
 CHARGE_SYMBOLS = ("-", "+")
+TERMINATORS = (" ", "\t", "\r", "\n")
 
 # PARSER SPECIFICATIONS
 

@@ -7,10 +7,20 @@ Custom error classes
 """
 
 
+class ParserStateException(Exception):
+    """
+    Error class used when a parser operation is used
+    when the parser is in a state it is not permitted to be used in.
+    """
+
+    pass
+
+
 class ParserError(Exception):
     """
-    Error class for all parser errors
+    Error class for all errors that occur when parsing input
     """
+
     def __init__(self, msg: str, position: int) -> None:
         """
         Initialises an instance of a parser error
@@ -25,8 +35,9 @@ class ParserError(Exception):
 
 class ParserWarning(Warning):
     """
-    Warning class for all parser warnings
+    Warning class for all warnings that occur when parsing input
     """
+
     def __init__(self, msg: str, position: int) -> None:
         """
         Initialises an instance of a parser warning
