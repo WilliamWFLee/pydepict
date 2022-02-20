@@ -7,10 +7,9 @@ Parsing for strings conforming to the OpenSMILES specification
 """
 
 import string
-from unittest.mock import DEFAULT
 import warnings
 from functools import wraps
-from typing import Callable, Generic, Iterable, Optional, Type, TypeVar, Union
+from typing import Callable, Generic, Iterable, Type, TypeVar, Union
 
 import networkx as nx
 

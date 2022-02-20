@@ -17,15 +17,16 @@ from pydepict.parser import Parser, Stream
 T = TypeVar("T")
 
 
-def apply_parse_method(meth: Callable[[Parser], T], value: Union[str, Stream]) -> T:
+def apply_parse_method(meth_name: str, value: Union[str, Stream]) -> T:
     """
-    Applies an unbound parse method to a string or :class:`Stream` and returns the value
+    Applies an parse method with an new instance of :class:`Stream`
+    and returns the value
 
-    :param meth: The parse method
-    :type meth: Callable[[Parser], T]
-    :param value: The string to apply the function to
+    :param meth_name: The parse method name, without the ``parse_`` prefix
+    :type meth_name: str
+    :param value: The string used to instantiate the parser stream with
     :type value: str
-    :return: The value returned from the function
+    :return: The value returned from the method
     :rtype: T
     """
     parser = Parser("")
@@ -34,7 +35,11 @@ def apply_parse_method(meth: Callable[[Parser], T], value: Union[str, Stream]) -
     else:
         stream = value
     parser._stream = stream
-    return meth(parser)
+
+    meth = getattr(parser, f"parse_{meth_name}", None)
+    if meth is None:
+        raise Exception(f"Parse method not found: 'parse_{meth_name}'")
+    return meth()
 
 
 def patch_parse_method(

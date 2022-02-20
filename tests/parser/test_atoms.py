@@ -14,7 +14,7 @@ import pytest
 import pytest_mock
 
 from pydepict.consts import Atom, AtomAttribute
-from pydepict.parser import Parser, Stream
+from pydepict.parser import Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}]"
@@ -105,7 +105,7 @@ def atom(
             module_mocker, attr, value, increment_stream_pos_by(length(attr, value))
         )
 
-    return apply_parse_method(Parser.parse_atom, stream)
+    return apply_parse_method("atom", stream)
 
 
 def test_atom_isotope(atom: Atom, isotope: Optional[int]):
