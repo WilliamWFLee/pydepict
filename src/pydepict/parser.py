@@ -8,17 +8,11 @@ Parsing for strings conforming to the OpenSMILES specification
 
 import warnings
 from functools import wraps
-from typing import Callable, Dict, Generic, Iterable, Optional, Type, TypeVar
+from typing import Callable, Generic, Iterable, Optional, Type, TypeVar
 
 import networkx as nx
 
-from .consts import (
-    CHARGE_SYMBOLS,
-    ELEMENT_FIRST_CHARS,
-    ELEMENTS,
-    TERMINATORS,
-    AtomAttribute,
-)
+from .consts import CHARGE_SYMBOLS, ELEMENT_FIRST_CHARS, ELEMENTS, TERMINATORS, Atom
 from .errors import ParserError, ParserStateException, ParserWarning
 
 __all__ = ["Stream", "Parser"]
@@ -245,14 +239,14 @@ class Parser:
         )
 
     @_catch_stop_iteration
-    def parse_bracket_atom(self) -> Dict[str, AtomAttribute]:
+    def parse_bracket_atom(self) -> Atom:
         """
         Parses a bracket atom from the stream
 
         :raises ParserError: If the opening and closing bracket is not found,
                              or no element is found
         :return: A dictionary of atom attributes
-        :rtype: Dict[str, AtomAttribute]
+        :rtype: Atom
         """
 
         attrs = {}
@@ -286,13 +280,13 @@ class Parser:
         return attrs
 
     @_catch_stop_iteration
-    def parse_atom(self) -> Dict[str, AtomAttribute]:
+    def parse_atom(self) -> Atom:
         """
         Parses an atom in the stream.
 
         :raises ParserError: If no atom is found
         :return: A dictionary of atom attributes
-        :rtype: Dict[str, AtomAttribute]
+        :rtype: Atom
         """
         return self.parse_bracket_atom()
 

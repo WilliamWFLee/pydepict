@@ -7,13 +7,13 @@ Tests the parsing of atom strings
 """
 
 from argparse import ArgumentError
-from typing import Dict, Optional
+from typing import Optional
 from unittest.mock import DEFAULT
 
 import pytest
 import pytest_mock
 
-from pydepict.consts import AtomAttribute
+from pydepict.consts import Atom, AtomAttribute
 from pydepict.parser import Parser, Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
@@ -46,7 +46,7 @@ def smiles(
     element: str,
     hcount: int,
     charge: int,
-) -> Dict[str, AtomAttribute]:
+) -> Atom:
     attrs = {
         "isotope": isotope,
         "element": element,
@@ -70,7 +70,7 @@ def atom(
     charge: int,
     stream: str,
     module_mocker: pytest_mock.MockerFixture,
-) -> Dict[str, AtomAttribute]:
+) -> Atom:
     def increment_stream_pos_by(value: int):
         """
         Returns a :class:`typing.Callable` that can be called
@@ -108,17 +108,17 @@ def atom(
     return apply_parse_method(Parser.parse_atom, stream)
 
 
-def test_atom_isotope(atom: Dict[str, AtomAttribute], isotope: Optional[int]):
+def test_atom_isotope(atom: Atom, isotope: Optional[int]):
     assert atom["isotope"] == isotope
 
 
-def test_atom_element(atom: Dict[str, AtomAttribute], element: str):
+def test_atom_element(atom: Atom, element: str):
     assert atom["element"] == element
 
 
-def test_atom_charge(atom: Dict[str, AtomAttribute], charge: int):
+def test_atom_charge(atom: Atom, charge: int):
     assert atom["charge"] == charge
 
 
-def test_atom_hcount(atom: Dict[str, AtomAttribute], hcount: int):
+def test_atom_hcount(atom: Atom, hcount: int):
     assert atom["hcount"] == hcount

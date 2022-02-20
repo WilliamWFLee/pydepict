@@ -6,7 +6,7 @@ pydepict.consts
 Constants such as element symbols, bond orders, other parsing symbols
 """
 
-from typing import Union
+from typing import Dict, Union
 
 # ELEMENT SYMBOLS
 
@@ -31,3 +31,4 @@ MIN_CHARGE_MAGNITUDE = 15
 # TYPE CONSTANTS
 
 AtomAttribute = Union[bool, str, int, float]
+Atom = Dict[str, AtomAttribute]
