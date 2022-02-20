@@ -6,7 +6,6 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
-from ctypes import Union
 import warnings
 from functools import wraps
 from typing import Callable, Dict, Generic, Iterable, Optional, Type, TypeVar
