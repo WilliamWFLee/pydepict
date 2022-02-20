@@ -15,7 +15,7 @@ import pytest_mock
 
 from pydepict.consts import AtomAttribute
 from pydepict.parser import Parser, Stream
-from tests.parser.utils import apply_parse_method
+from tests.parser.utils import apply_parse_method, patch_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{element}H{hcount}{charge:+}]"
 
@@ -86,9 +86,9 @@ def atom(
         ("hcount", hcount),
         ("charge", charge),
     ]:
-        mock = module_mocker.patch.object(Parser, f"parse_{attr}")
-        mock.return_value = value
-        mock.side_effect = increment_stream_pos_by(length(attr, value))
+        patch_parse_method(
+            module_mocker, attr, value, increment_stream_pos_by(length(attr, value))
+        )
 
     return apply_parse_method(Parser.parse_atom, stream)
 

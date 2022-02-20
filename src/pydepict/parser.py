@@ -8,7 +8,7 @@ Parsing for strings conforming to the OpenSMILES specification
 
 import warnings
 from functools import wraps
-from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar
+from typing import Callable, Dict, Generic, Iterable, TypeVar
 
 import networkx as nx
 
@@ -105,14 +105,47 @@ class Parser:
         return wrapper
 
     @catch_stop_iteration
-    def parse_element_symbol(self) -> Optional[str]:
+    def parse_number(self) -> int:
+        """
+        Parse a number (integer) from the stream
+
+        :raise ParserError: If no number is next in stream
+        :return: The parsed number
+        :rtype: int
+        """
+        number = ""
+        while True:
+            try:
+                number += self.parse_digit()
+            except ParserError:
+                break
+
+        if not number:
+            raise ParserError(
+                f"Expected digit, got {self._stream.peek()}", self._stream.pos
+            )
+
+        return int(number)
+
+    @catch_stop_iteration
+    def parse_isotope(self) -> int:
+        """
+        Parses an isotope specification from the stream
+
+        :return: The isotope number parsed
+        :rtype: int
+        """
+        return self.parse_number()
+
+    @catch_stop_iteration
+    def parse_element_symbol(self) -> str:
         """
         Parses an element symbol from the stream
 
         :raises ParserError: If the element symbol is not a known element,
                             or a valid element symbol is not read
         :return: The element parsed
-        :rtype: Optional[str]
+        :rtype: str
         """
         first_char = self._stream.peek()
         if first_char in ELEMENT_FIRST_CHARS:
@@ -215,6 +248,11 @@ class Parser:
                 self._stream.pos,
             )
         next(self._stream)
+
+        try:
+            attrs["isotope"] = self.parse_isotope()
+        except ParserError:
+            attrs["isotope"] = None
 
         attrs["element"] = self.parse_element_symbol()
         for attr, parse_method, default in [

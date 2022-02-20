@@ -6,11 +6,19 @@ tests.parser.test_hydrogens
 Tests the parsing of hydrogen counts
 """
 
+import pytest
+import pytest_mock
 from pydepict.parser import Parser
 
-from .utils import apply_parse_method
+from .utils import apply_parse_method, patch_parse_method
 
 BRACKET_ATOM_TEMPLATE = "[*{}]"
+
+
+@pytest.fixture
+def hcount(valid_hcount: str, mocker: pytest_mock.MockerFixture) -> str:
+    patch_parse_method(mocker, "digit", int(valid_hcount))
+    return valid_hcount
 
 
 def test_parse_hcount(valid_hcount: str):

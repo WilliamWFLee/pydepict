@@ -7,25 +7,30 @@ Tests the parsing of charges
 """
 
 import pytest
+import pytest_mock
 
 from pydepict.errors import ParserWarning
 from pydepict.parser import Parser
 
-from .utils import apply_parse_method
+from .utils import apply_parse_method, patch_parse_method
 
 ATOM_TEMPLATE = "[*{:+}]"
 SYM_ONLY_ATOM_TEMPLATE = "[*{}]"
 CHARGE_TEMPLATE = "{:+}"
 
 
-def test_valid_charge(valid_charge: int):
+@pytest.fixture
+def charge(valid_charge: int, mocker: pytest_mock.MockerFixture) -> int:
+    patch_parse_method(mocker, "digit", side_effect=str(abs(valid_charge)).split())
+    return valid_charge
+
+
+def test_valid_charge(charge: int):
     """
     Tests valid explicit charges, e.g. [*+2]
     """
-    result = apply_parse_method(
-        Parser.parse_charge, CHARGE_TEMPLATE.format(valid_charge)
-    )
-    assert result == valid_charge
+    result = apply_parse_method(Parser.parse_charge, CHARGE_TEMPLATE.format(charge))
+    assert result == charge
 
 
 def test_implied_charge_magnitude(valid_symbol_charge: str):

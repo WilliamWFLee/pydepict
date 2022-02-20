@@ -16,6 +16,7 @@ for first_char in string.ascii_uppercase:
             NONEXISTENT_ELEMENT_SYMBOLS.append(symbol)
 
 
+# Elements
 @pytest.fixture(scope="package", params=ELEMENTS)
 def valid_element(request: pytest.FixtureRequest) -> str:
     return request.param
@@ -30,11 +31,13 @@ def invalid_element(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
+# Hydrogens
 @pytest.fixture(scope="package", params=string.digits)
 def valid_hcount(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
+# Charges
 @pytest.fixture(
     scope="package", params=range(-MIN_CHARGE_MAGNITUDE, MIN_CHARGE_MAGNITUDE + 1)
 )
@@ -52,6 +55,7 @@ def valid_double_symbol_charge(request: pytest.FixtureRequest) -> str:
     return 2 * request.param
 
 
+# Digits
 @pytest.fixture(scope="package", params=string.digits)
 def valid_digit(request: pytest.FixtureRequest) -> str:
     return request.param
@@ -63,3 +67,23 @@ def valid_digit(request: pytest.FixtureRequest) -> str:
 )
 def invalid_digit(request: pytest.FixtureRequest) -> str:
     return request.param
+
+
+# Numbers
+@pytest.fixture(
+    scope="package",
+    params=(
+        [num for num in range(10)]
+        + [num for num in range(10, 100, 5)]
+        + [num for num in range(100, 1000, 50)]
+        + [num for num in range(1000, 10000, 500)]
+    ),
+)
+def valid_number(request: pytest.FixtureRequest):
+    return request.param
+
+
+# Isotopes
+@pytest.fixture(scope="package")
+def valid_isotope(valid_number: int):
+    return valid_number
