@@ -6,9 +6,11 @@ pydepict.parser
 Parsing for strings conforming to the OpenSMILES specification
 """
 
+import string
+from unittest.mock import DEFAULT
 import warnings
 from functools import wraps
-from typing import Callable, Generic, Iterable, Optional, Type, TypeVar
+from typing import Callable, Generic, Iterable, Optional, Type, TypeVar, Union
 
 import networkx as nx
 
@@ -81,6 +83,9 @@ class Parser:
         :type: str
     """
 
+    # Sentinel object
+    DEFAULT = object()
+
     def __init__(self, smiles: str):
         self.smiles = smiles
 
@@ -113,6 +118,41 @@ class Parser:
             )
         return exc_type(msg, stream.pos)
 
+    def expect(
+        self, symbols: Iterable[str], default: Union[str, object] = DEFAULT
+    ) -> Union[str, object]:
+        """
+        Expect the next string to be any character
+        from the specified list :param:`symbols`, otherwise raise :class:`ParserError`.
+
+        If end-of-stream is reached, then return :param:`default` if specified,
+        or raise :class:`ParserError`.
+
+        :param symbols: An iterable of symbols to expect
+        :type symbols: Iterable[str]
+        :param default: Value to return if end-of-stream is reached
+        :type default: Union[str, object]
+        :raises ParserError: If next symbol in stream is not an expected symbol
+        :return: The symbol from :param:`symbols` encountered.
+        :rtype: Iterable[str]
+        """
+        try:
+            peek = self._stream.peek()
+        except StopIteration:
+            if default != self.DEFAULT:
+                return default
+            else:
+                raise self._new_exception("Unexpected end-of-stream")
+
+        if peek in symbols:
+            return next(self._stream)
+
+        raise self._new_exception(
+            "Expected character from "
+            f"{', '.join(repr(symbol) for symbol in symbols)}, "
+            f"got {self._stream.peek()!r}"
+        )
+
     @_catch_stop_iteration
     def parse_number(self) -> int:
         """
@@ -130,7 +170,7 @@ class Parser:
                 break
 
         if not number:
-            raise self._new_exception(f"Expected digit, got {self._stream.peek()}")
+            raise self._new_exception(f"Expected number, got {self._stream.peek()}")
 
         return int(number)
 
@@ -154,19 +194,15 @@ class Parser:
         :return: The element parsed
         :rtype: str
         """
-        first_char = self._stream.peek()
-        if first_char in ELEMENT_FIRST_CHARS:
-            element = next(self._stream)
-            next_char = self._stream.peek("")
-            if next_char and first_char + next_char in ELEMENTS:
-                element += next(self._stream)
+        element = self.expect(ELEMENT_FIRST_CHARS)
+        next_char = self._stream.peek("")
+        if next_char and element + next_char in ELEMENTS:
+            element += next(self._stream)
 
-            if element in ELEMENTS:
-                return element
+        if element in ELEMENTS:
+            return element
 
-            raise self._new_exception(f"Invalid element symbol {element!r}")
-
-        raise self._new_exception("Expected element symbol")
+        raise self._new_exception(f"Invalid element symbol {element!r}")
 
     @_catch_stop_iteration
     def parse_digit(self) -> str:
@@ -177,10 +213,7 @@ class Parser:
         :return: The digit parsed
         :rtype: str
         """
-        char = self._stream.peek()
-        if char.isdigit():
-            return next(self._stream)
-        raise self._new_exception(f"Expected digit, got {self._stream.peek()}")
+        return self.expect(string.digits)
 
     @_catch_stop_iteration
     def parse_hcount(self) -> int:
@@ -191,17 +224,15 @@ class Parser:
         :return: The hydrogen count, defaults to 0 if at stream end
         :rtype: int
         """
-        peek = self._stream.peek(None)
-        if peek == "H":
-            next(self._stream)
-            try:
-                count = int(self.parse_digit())
-            except ParserError:
-                count = 1
-            return count
-        elif peek is None:
+        h = self.expect(("H",), None)
+        if h is None:
             return 0
-        raise self._new_exception(f"Expected 'H', got {peek!r}")
+        try:
+            count = int(self.parse_digit())
+        except ParserError:
+            count = 1
+
+        return count
 
     @_catch_stop_iteration
     def parse_charge(self) -> int:
@@ -211,32 +242,27 @@ class Parser:
         :return: The charge, defaults to 0 if not found
         :rtype: int
         """
-        peek = self._stream.peek(None)
-        if peek in CHARGE_SYMBOLS:
-            sign = next(self._stream)
-            if self._stream.peek(None) == sign:
-                next(self._stream)
-                warnings.warn(
-                    self._new_exception(
-                        f"Use of {2 * sign} instead of {sign}2 is deprecated",
-                        ParserWarning,
-                    )
-                )
-                return int(sign + "2")
-            try:
-                first_digit = self.parse_digit()
-            except ParserError:
-                return int(sign + "1")
-            try:
-                second_digit = self.parse_digit()
-            except ParserError:
-                return int(sign + first_digit)
-            return int(sign + first_digit + second_digit)
-        if peek is None:
+        sign = self.expect(CHARGE_SYMBOLS, None)
+        if sign is None:
             return 0
-        raise self._new_exception(
-            f"Expected charge symbol, got {self._stream.peek()!r}"
-        )
+        if self._stream.peek(None) == sign:
+            next(self._stream)
+            warnings.warn(
+                self._new_exception(
+                    f"Use of {2 * sign} instead of {sign}2 is deprecated",
+                    ParserWarning,
+                )
+            )
+            return int(sign + "2")
+        try:
+            first_digit = self.parse_digit()
+        except ParserError:
+            return int(sign + "1")
+        try:
+            second_digit = self.parse_digit()
+        except ParserError:
+            return int(sign + first_digit)
+        return int(sign + first_digit + second_digit)
 
     @_catch_stop_iteration
     def parse_bracket_atom(self) -> Atom:
@@ -250,12 +276,8 @@ class Parser:
         """
 
         attrs = {}
-        if self._stream.peek() != "[":
-            raise self._new_exception(
-                f"Expected '[' for start of bracket atom, got {self._stream.peek()!r}"
-            )
-        next(self._stream)
 
+        self.expect("[")
         try:
             attrs["isotope"] = self.parse_isotope()
         except ParserError:
@@ -271,11 +293,7 @@ class Parser:
             except ParserError:
                 attrs[attr] = default
 
-        if self._stream.peek() != "]":
-            raise self._new_exception(
-                f"Expected ']' for end of bracket atom, got {self._stream.peek()!r}",
-            )
-        next(self._stream)
+        self.expect("]")
 
         return attrs
 
@@ -309,10 +327,7 @@ class Parser:
         :raises ParserError: If terminator is not found, and stream is not at end.
         """
         try:
-            if self._stream.peek() not in TERMINATORS:
-                raise self._new_exception(
-                    f"Expected terminator, got {self._stream.peek()}"
-                )
+            self.expect(TERMINATORS)
         except StopIteration:
             pass
 
