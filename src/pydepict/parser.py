@@ -260,6 +260,21 @@ class Parser:
         return int(sign + first_digit + second_digit)
 
     @_catch_stop_iteration
+    def parse_class(self) -> int:
+        """
+        Parses an atom class specification from the stream.
+
+        :raises ParserError: If no atom class specification is found
+        :return: The atom class as an :class:`int`
+        :rtype: int
+        """
+        self.expect(":")
+        try:
+            return self.parse_number()
+        except ParserError:
+            raise self._new_exception("Expected number for atom class") from None
+
+    @_catch_stop_iteration
     def parse_bracket_atom(self) -> Atom:
         """
         Parses a bracket atom from the stream
@@ -282,6 +297,7 @@ class Parser:
         for attr, parse_method, default in [
             ("hcount", self.parse_hcount, 0),
             ("charge", self.parse_charge, 0),
+            ("class", self.parse_class, None),
         ]:
             try:
                 attrs[attr] = parse_method()

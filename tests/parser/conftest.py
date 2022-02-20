@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import string
+
 import pytest
 
 from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, MIN_CHARGE_MAGNITUDE
-
 
 NONEXISTENT_ELEMENT_SYMBOLS = []
 for first_char in string.ascii_uppercase:
@@ -86,4 +86,10 @@ def valid_number(request: pytest.FixtureRequest):
 # Isotopes
 @pytest.fixture(scope="package")
 def valid_isotope(valid_number: int):
+    return valid_number
+
+
+# Atom classes
+@pytest.fixture(scope="package")
+def valid_class(valid_number: int):
     return valid_number

@@ -17,7 +17,7 @@ from pydepict.consts import Atom, AtomAttribute
 from pydepict.parser import Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
-SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}]"
+SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
 
 @pytest.fixture(scope="module")
@@ -41,17 +41,24 @@ def charge() -> int:
 
 
 @pytest.fixture(scope="module")
+def class_() -> int:
+    return 14
+
+
+@pytest.fixture(scope="module")
 def smiles(
     isotope: int,
     element: str,
     hcount: int,
     charge: int,
+    class_: int,
 ) -> Atom:
     attrs = {
         "isotope": isotope,
         "element": element,
         "hcount": hcount,
         "charge": charge,
+        "class": class_,
     }
 
     return SINGLE_ATOM_TEMPLATE.format(**attrs)
@@ -68,6 +75,7 @@ def atom(
     element: str,
     hcount: int,
     charge: int,
+    class_: int,
     stream: str,
     module_mocker: pytest_mock.MockerFixture,
 ) -> Atom:
@@ -89,7 +97,7 @@ def atom(
             return len(value)
         if attr == "isotope":
             return len(str(value))
-        if attr == "hcount":
+        if attr in ("hcount", "class"):
             return len(str(value)) + 1
         if attr == "charge":
             return len(f"{value:+}")
@@ -100,6 +108,7 @@ def atom(
         ("element_symbol", element),
         ("hcount", hcount),
         ("charge", charge),
+        ("class", class_),
     ]:
         patch_parse_method(
             module_mocker, attr, value, increment_stream_pos_by(length(attr, value))
@@ -122,3 +131,7 @@ def test_atom_charge(atom: Atom, charge: int):
 
 def test_atom_hcount(atom: Atom, hcount: int):
     assert atom["hcount"] == hcount
+
+
+def test_atom_class(atom: Atom, class_: int):
+    assert atom["class"] == class_
