@@ -13,7 +13,14 @@ from typing import Callable, Generic, Iterable, Type, TypeVar, Union
 
 import networkx as nx
 
-from .consts import CHARGE_SYMBOLS, ELEMENT_FIRST_CHARS, ELEMENTS, TERMINATORS, Atom
+from .consts import (
+    BOND_TO_ORDER,
+    CHARGE_SYMBOLS,
+    ELEMENT_FIRST_CHARS,
+    ELEMENTS,
+    TERMINATORS,
+    Atom,
+)
 from .errors import ParserError, ParserStateException, ParserWarning
 
 __all__ = ["Stream", "Parser"]
@@ -172,6 +179,18 @@ class Parser:
             raise self._new_exception(f"Expected number, got {self._stream.peek()}")
 
         return int(number)
+
+    @_catch_stop_iteration
+    def parse_bond(self) -> float:
+        """
+        Parses a bond symbol from the stream
+
+        :raises ParserError: If invalid bond symbol is encountered
+        :return: The bond order of the bond symbol
+        :rtype: float
+        """
+        symbol = self.expect(BOND_TO_ORDER)
+        return BOND_TO_ORDER[symbol]
 
     @_catch_stop_iteration
     def parse_isotope(self) -> int:

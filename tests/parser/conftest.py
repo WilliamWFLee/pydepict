@@ -4,7 +4,12 @@ import string
 
 import pytest
 
-from pydepict.consts import CHARGE_SYMBOLS, ELEMENTS, MIN_CHARGE_MAGNITUDE
+from pydepict.consts import (
+    BOND_TO_ORDER,
+    CHARGE_SYMBOLS,
+    ELEMENTS,
+    MIN_CHARGE_MAGNITUDE,
+)
 
 NONEXISTENT_ELEMENT_SYMBOLS = []
 for first_char in string.ascii_uppercase:
@@ -93,3 +98,17 @@ def valid_isotope(valid_number: int):
 @pytest.fixture(scope="package")
 def valid_class(valid_number: int):
     return valid_number
+
+
+# Bonds
+@pytest.fixture(scope="package", params=BOND_TO_ORDER)
+def valid_bond(request: pytest.FixtureRequest):
+    return request.param
+
+
+@pytest.fixture(
+    scope="package",
+    params=[symbol for symbol in string.punctuation if symbol not in BOND_TO_ORDER],
+)
+def invalid_bond(request: pytest.FixtureRequest):
+    return request.param

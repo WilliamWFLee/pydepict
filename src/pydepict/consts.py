@@ -23,6 +23,12 @@ ELEMENT_FIRST_CHARS = set(element[0] for element in ELEMENTS)
 
 CHARGE_SYMBOLS = ("-", "+")
 TERMINATORS = (" ", "\t", "\r", "\n")
+BOND_TO_ORDER: Dict[str, float] = {
+    "-": 1,
+    "=": 2,
+    "#": 3,
+    "$": 4,
+}
 
 # PARSER SPECIFICATIONS
 
