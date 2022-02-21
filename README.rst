@@ -1,8 +1,9 @@
 pydepict
 ========
 
-A library for parsing SMILES (simplified molecular-input line-entry system) strings and generating 2D depictions of chemical structures from these strings,
-developed as part of a 3rd year computer science dissertation project.
+A library and accompanying program for parsing SMILES (simplified molecular-input line-entry system) strings and generating 2D depictions of chemical structures from these strings.
+
+It was originally developed as part of a 3rd year computer science dissertation project.
 
 License
 -------
