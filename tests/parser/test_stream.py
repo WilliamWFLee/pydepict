@@ -19,7 +19,7 @@ def stream():
     return Stream(TEST_STRING)
 
 
-@pytest.mark.run(order=1)
+@pytest.mark.order(1)
 @pytest.mark.must_pass
 class TestStream:
     @staticmethod
