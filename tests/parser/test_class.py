@@ -43,7 +43,15 @@ def test_valid_padded_class(padded_class: str):
 
 def test_no_class():
     """
-    Tests parsing no class, with expected :class:`ParserError`
+    Tests parsing no atom class, with expected :class:`ParserError`
     """
     with pytest.raises(ParserError):
         apply_parse_method("class", "")
+
+
+def test_no_class_number():
+    """
+    Tests parsing no atom class number, with expected :class:`ParserError`
+    """
+    with pytest.raises(ParserError):
+        apply_parse_method("class", ":")
