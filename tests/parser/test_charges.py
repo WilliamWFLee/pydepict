@@ -20,7 +20,9 @@ CHARGE_TEMPLATE = "{:+}"
 
 @pytest.fixture
 def charge(valid_charge: int, mocker: pytest_mock.MockerFixture) -> int:
-    patch_parse_method(mocker, "digit", side_effect=str(abs(valid_charge)).split())
+    patch_parse_method(
+        mocker, "digit", side_effect=(digit for digit in str(abs(valid_charge)))
+    )
     return valid_charge
 
 
