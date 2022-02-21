@@ -16,3 +16,8 @@ line_length=88
 markers = [
     "must_pass: marks tests as must passing in order for testing to continue."
 ]
+addopts = [
+    "--cov=pydepict",
+    "--cov-report=html",
+    "-q"
+]
