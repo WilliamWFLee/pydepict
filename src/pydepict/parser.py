@@ -41,7 +41,7 @@ class Stream(Generic[T]):
         :type: int
     """
 
-    _NO_DEFAULT = object()
+    DEFAULT = object()
 
     def __init__(self, content: Iterable[T]) -> None:
         self._iter = iter(content)
@@ -57,7 +57,7 @@ class Stream(Generic[T]):
         self.pos += 1
         return next_
 
-    def peek(self, default: T = _NO_DEFAULT) -> T:
+    def peek(self, default: T = DEFAULT) -> T:
         """
         Returns the next item in the stream without advancing the stream.
 
@@ -72,7 +72,7 @@ class Stream(Generic[T]):
             try:
                 self._peek = next(self._iter)
             except StopIteration:
-                if default != self._NO_DEFAULT:
+                if default != self.DEFAULT:
                     return default
                 raise
         return self._peek
