@@ -356,11 +356,7 @@ class Parser:
 
         :raises ParserError: If terminator is not found, and stream is not at end.
         """
-        try:
-            self.expect(TERMINATORS)
-        except StopIteration:
-            pass
-
+        self.expect(TERMINATORS, None)
         return None
 
     def parse(self) -> nx.Graph:

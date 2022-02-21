@@ -9,6 +9,7 @@ from pydepict.consts import (
     CHARGE_SYMBOLS,
     ELEMENTS,
     MIN_CHARGE_MAGNITUDE,
+    TERMINATORS,
 )
 
 NONEXISTENT_ELEMENT_SYMBOLS = []
@@ -84,25 +85,25 @@ def invalid_digit(request: pytest.FixtureRequest) -> str:
         + [num for num in range(1000, 10000, 500)]
     ),
 )
-def valid_number(request: pytest.FixtureRequest):
+def valid_number(request: pytest.FixtureRequest) -> int:
     return request.param
 
 
 # Isotopes
 @pytest.fixture(scope="package")
-def valid_isotope(valid_number: int):
+def valid_isotope(valid_number: int) -> int:
     return valid_number
 
 
 # Atom classes
 @pytest.fixture(scope="package")
-def valid_class(valid_number: int):
+def valid_class(valid_number: int) -> int:
     return valid_number
 
 
 # Bonds
 @pytest.fixture(scope="package", params=BOND_TO_ORDER)
-def valid_bond(request: pytest.FixtureRequest):
+def valid_bond(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
@@ -110,5 +111,11 @@ def valid_bond(request: pytest.FixtureRequest):
     scope="package",
     params=[symbol for symbol in string.punctuation if symbol not in BOND_TO_ORDER],
 )
-def invalid_bond(request: pytest.FixtureRequest):
+def invalid_bond(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+# Terminators
+@pytest.fixture(scope="package", params=TERMINATORS)
+def valid_terminator(request: pytest.FixtureRequest) -> str:
     return request.param
