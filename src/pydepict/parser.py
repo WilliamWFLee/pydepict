@@ -129,6 +129,7 @@ class Parser:
     def expect(
         self,
         symbols: Iterable[str],
+        terminal: Optional[str] = None,
         default: Union[str, object] = DEFAULT,
     ) -> Union[str, object]:
         """
@@ -140,6 +141,8 @@ class Parser:
 
         :param symbols: An iterable of symbols to expect
         :type symbols: Iterable[str]
+        :param terminal: Name of the terminal to expect, used for error raising
+        :type terminal: Optional[str]
         :param default: Value to return if end-of-stream is reached
         :type default: Union[str, object]
         :raises ParserError: If next symbol in stream is not an expected symbol
@@ -157,11 +160,13 @@ class Parser:
         if peek in symbols:
             return next(self._stream)
 
-        raise self._new_exception(
-            "Expected character from "
-            f"{', '.join(repr(symbol) for symbol in symbols)}, "
-            f"got {self._stream.peek()!r}"
+        expected = (
+            terminal
+            if terminal is not None
+            else ", ".join(repr(symbol) for symbol in symbols)
         )
+        msg = f"Expected {expected}, got {self._stream.peek()!r}"
+        raise self._new_exception(msg)
 
     @_catch_stop_iteration
     def parse_number(self) -> int:
@@ -193,7 +198,7 @@ class Parser:
         :return: The bond order of the bond symbol
         :rtype: float
         """
-        symbol = self.expect(BOND_TO_ORDER)
+        symbol = self.expect(BOND_TO_ORDER, "bond")
         return BOND_TO_ORDER[symbol]
 
     @_catch_stop_iteration
@@ -216,7 +221,7 @@ class Parser:
         :return: The element parsed
         :rtype: str
         """
-        element = self.expect(ELEMENT_SYMBOL_FIRST_CHARS)
+        element = self.expect(ELEMENT_SYMBOL_FIRST_CHARS, "alphabetic character")
         next_char = self._stream.peek("")
         if next_char and element + next_char in ELEMENT_SYMBOLS:
             element += next(self._stream)
@@ -235,7 +240,7 @@ class Parser:
         :return: The digit parsed
         :rtype: str
         """
-        return self.expect(string.digits)
+        return self.expect(string.digits, "digit")
 
     @_catch_stop_iteration
     def parse_hcount(self) -> int:
@@ -246,7 +251,7 @@ class Parser:
         :return: The hydrogen count
         :rtype: int
         """
-        self.expect(("H",))
+        self.expect(("H",), "'H'")
         try:
             count = int(self.parse_digit())
         except ParserError:
@@ -262,7 +267,7 @@ class Parser:
         :return: The charge parsed
         :rtype: int
         """
-        sign = self.expect(CHARGE_SYMBOLS)
+        sign = self.expect(CHARGE_SYMBOLS, "charge sign")
         if self._stream.peek(None) == sign:
             next(self._stream)
             warnings.warn(
@@ -291,7 +296,7 @@ class Parser:
         :return: The atom class as an :class:`int`
         :rtype: int
         """
-        self.expect(":")
+        self.expect(":", "colon for atom class")
         try:
             return self.parse_number()
         except ParserError:
@@ -310,7 +315,7 @@ class Parser:
 
         attrs = {}
 
-        self.expect("[")
+        self.expect("[", "opening bracket for atom")
         try:
             attrs["isotope"] = self.parse_isotope()
         except ParserError:
@@ -327,7 +332,7 @@ class Parser:
             except ParserError:
                 attrs[attr] = default
 
-        self.expect("]")
+        self.expect("]", "closing bracket for atom")
 
         return attrs
 
@@ -343,7 +348,7 @@ class Parser:
         :rtype: str
         """
         try:
-            element = self.expect(ORGANIC_SYMBOL_FIRST_CHARS)
+            element = self.expect(ORGANIC_SYMBOL_FIRST_CHARS, "alphabetic character")
         except ParserError:
             if self._stream.peek() in ELEMENT_SYMBOLS:
                 raise self._new_exception(
@@ -413,7 +418,7 @@ class Parser:
 
         :raises ParserError: If terminator is not found, and stream is not at end.
         """
-        self.expect(TERMINATORS, None)
+        self.expect(TERMINATORS, "terminator", None)
         return None
 
     def parse(self) -> nx.Graph:
