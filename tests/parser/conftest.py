@@ -7,30 +7,30 @@ import pytest
 from pydepict.consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
-    ELEMENTS,
+    ELEMENT_SYMBOLS,
     MIN_CHARGE_MAGNITUDE,
     TERMINATORS,
 )
 
 NONEXISTENT_ELEMENT_SYMBOLS = []
 for first_char in string.ascii_uppercase:
-    if first_char in ELEMENTS:
+    if first_char in ELEMENT_SYMBOLS:
         continue
     for second_char in string.ascii_lowercase:
         symbol = first_char + second_char
-        if symbol not in ELEMENTS:
+        if symbol not in ELEMENT_SYMBOLS:
             NONEXISTENT_ELEMENT_SYMBOLS.append(symbol)
 
 
 # Elements
-@pytest.fixture(scope="package", params=ELEMENTS)
+@pytest.fixture(scope="package", params=ELEMENT_SYMBOLS)
 def valid_element(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
 @pytest.fixture(
     scope="package",
-    params=[element.lower() for element in ELEMENTS if element.isalpha()]
+    params=[element.lower() for element in ELEMENT_SYMBOLS if element.isalpha()]
     + NONEXISTENT_ELEMENT_SYMBOLS,
 )
 def invalid_element(request: pytest.FixtureRequest) -> str:

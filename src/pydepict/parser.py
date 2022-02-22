@@ -9,15 +9,17 @@ Parsing for strings conforming to the OpenSMILES specification
 import string
 import warnings
 from functools import wraps
-from typing import Callable, Generic, Iterable, Type, TypeVar, Union
+from typing import Callable, Generic, Iterable, Optional, Type, TypeVar, Union
 
 import networkx as nx
 
 from .consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
-    ELEMENT_FIRST_CHARS,
-    ELEMENTS,
+    ELEMENT_SYMBOL_FIRST_CHARS,
+    ELEMENT_SYMBOLS,
+    ORGANIC_SYMBOL_FIRST_CHARS,
+    ORGANIC_SYMBOLS,
     TERMINATORS,
     Atom,
 )
@@ -125,7 +127,9 @@ class Parser:
         return exc_type(msg, stream.pos)
 
     def expect(
-        self, symbols: Iterable[str], default: Union[str, object] = DEFAULT
+        self,
+        symbols: Iterable[str],
+        default: Union[str, object] = DEFAULT,
     ) -> Union[str, object]:
         """
         Expect the next string to be any character
@@ -208,16 +212,16 @@ class Parser:
         Parses an element symbol from the stream
 
         :raises ParserError: If the element symbol is not a known element,
-                            or a valid element symbol is not read
+                             or a valid element symbol is not read
         :return: The element parsed
         :rtype: str
         """
-        element = self.expect(ELEMENT_FIRST_CHARS)
+        element = self.expect(ELEMENT_SYMBOL_FIRST_CHARS)
         next_char = self._stream.peek("")
-        if next_char and element + next_char in ELEMENTS:
+        if next_char and element + next_char in ELEMENT_SYMBOLS:
             element += next(self._stream)
 
-        if element in ELEMENTS:
+        if element in ELEMENT_SYMBOLS:
             return element
 
         raise self._new_exception(f"Invalid element symbol {element!r}")
@@ -328,6 +332,45 @@ class Parser:
         return attrs
 
     @_catch_stop_iteration
+    def parse_organic_symbol(self) -> str:
+        """
+        Parses an organic subset symbol from the stream.
+
+        :raises ParserError: If the element symbol is not a known element,
+                             not a valid element symbol, or is a valid element symbol
+                             that cannot be used in an organic context
+        :return: The element parsed
+        :rtype: str
+        """
+        try:
+            element = self.expect(ORGANIC_SYMBOL_FIRST_CHARS)
+        except ParserError:
+            if self._stream.peek() in ELEMENT_SYMBOLS:
+                raise self._new_exception(
+                    f"Element symbol {self._stream.peek()!r} "
+                    "cannot be used in an organic context"
+                )
+            raise
+        next_char = self._stream.peek("")
+        if next_char:
+            if element + next_char in ORGANIC_SYMBOLS:
+                element += next(self._stream)
+            elif element + next_char in ELEMENT_SYMBOLS:
+                raise self._new_exception(
+                    f"Element symbol {element + next_char!r} "
+                    "cannot be used in an organic context"
+                )
+
+        if element in ORGANIC_SYMBOLS:
+            return {"element": element}
+        if element in ELEMENT_SYMBOLS:
+            raise self._new_exception(
+                f"Element symbol {element!r} cannot be used in an organic context"
+            )
+
+        raise self._new_exception(f"Invalid element symbol {element!r}")
+
+    @_catch_stop_iteration
     def parse_atom(self) -> Atom:
         """
         Parses an atom in the stream.
@@ -336,7 +379,21 @@ class Parser:
         :return: A dictionary of atom attributes
         :rtype: Atom
         """
-        return self.parse_bracket_atom()
+        atom = {
+            "isotope": None,
+            "hcount": None,
+            "charge": 0,
+            "class": None,
+        }
+        attrs: Optional[Atom] = None
+        if self._stream.peek() == "[":
+            attrs = self.parse_bracket_atom()
+        else:
+            attrs = self.parse_organic_symbol()
+        if attrs is None:
+            raise self._new_exception("Expected atom")
+        atom.update(**attrs)
+        return atom
 
     @_catch_stop_iteration
     def parse_line(self):
@@ -370,11 +427,7 @@ class Parser:
         self._atom_index = 0
         self._stream = Stream(self.smiles)
 
-        try:
-            self.parse_line()
-        except ParserError:
-            pass
-
+        self.parse_line()
         self.parse_terminator()
 
         try:
