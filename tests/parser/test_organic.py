@@ -18,7 +18,7 @@ def test_parse_valid_organic_symbols(valid_organic: str):
     Tests parsing a stream of a single organic symbol
     """
     result = apply_parse_method("organic_symbol", valid_organic)
-    assert result["element"] == valid_organic
+    assert result == valid_organic
 
 
 def test_parse_invalid_organic_symbols(invalid_element: str):

@@ -13,36 +13,36 @@ from unittest.mock import DEFAULT
 import pytest
 import pytest_mock
 
-from pydepict.consts import Atom, AtomAttribute
+from pydepict.consts import AROMATIC_SYMBOLS, STANDARD_SYMBOLS, Atom, AtomAttribute
 from pydepict.parser import Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
 
-@pytest.fixture(scope="module")
-def isotope() -> int:
-    return 1343
+@pytest.fixture(scope="module", params=(0, 43, 684))
+def isotope(request: pytest.FixtureRequest) -> int:
+    return request.param
 
 
-@pytest.fixture(scope="module")
-def element() -> str:
-    return "*"
+@pytest.fixture(scope="module", params=("Tm", "In", "b"))
+def element(request: pytest.FixtureRequest) -> str:
+    return request.param
 
 
-@pytest.fixture(scope="module")
-def hcount() -> int:
-    return 4
+@pytest.fixture(scope="module", params=(4, 6, 1))
+def hcount(request: pytest.FixtureRequest) -> int:
+    return request.param
 
 
-@pytest.fixture(scope="module")
-def charge() -> int:
-    return 2
+@pytest.fixture(scope="module", params=(-12, 0, 6))
+def charge(request: pytest.FixtureRequest) -> int:
+    return request.param
 
 
-@pytest.fixture(scope="module")
-def class_() -> int:
-    return 14
+@pytest.fixture(scope="module", params=(3, 15, 2352))
+def class_(request: pytest.FixtureRequest) -> int:
+    return request.param
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +122,11 @@ def test_atom_isotope(atom: Atom, isotope: Optional[int]):
 
 
 def test_atom_element(atom: Atom, element: str):
-    assert atom["element"] == element
+    assert atom["element"].title() == element.title()
+
+
+def test_atom_aromaticitty(atom: Atom, element: str):
+    assert atom["aromatic"] == (True if element.islower() else False)
 
 
 def test_atom_charge(atom: Atom, charge: int):

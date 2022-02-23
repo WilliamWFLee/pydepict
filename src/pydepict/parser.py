@@ -367,7 +367,7 @@ class Parser:
                 )
 
         if element in ORGANIC_SYMBOLS:
-            return {"element": element}
+            return element
         if element in ELEMENT_SYMBOLS:
             raise self._new_exception(
                 f"Element symbol {element!r} cannot be used in an organic context"
@@ -384,20 +384,38 @@ class Parser:
         :return: A dictionary of atom attributes
         :rtype: Atom
         """
+
+        # Default atom attributes
         atom = {
             "isotope": None,
             "hcount": None,
             "charge": 0,
             "class": None,
+            "aromatic": False,
         }
-        attrs: Optional[Atom] = None
+
         if self._stream.peek() == "[":
-            attrs = self.parse_bracket_atom()
+            # Bracket atom
+            try:
+                attrs = self.parse_bracket_atom()
+            except ParserError:
+                raise self._new_exception("Expected atom") from None
+            else:
+                atom.update(**attrs)
         else:
-            attrs = self.parse_organic_symbol()
-        if attrs is None:
-            raise self._new_exception("Expected atom")
-        atom.update(**attrs)
+            # Organic subset symbol
+            try:
+                element = self.parse_organic_symbol()
+            except ParserError:
+                raise self._new_exception("Expected atom") from None
+            else:
+                atom["element"] = element
+
+        # Deal with aromatic atoms
+        if atom["element"].islower():
+            atom["element"] = atom["element"].upper()
+            atom["aromatic"] = True
+
         return atom
 
     @_catch_stop_iteration

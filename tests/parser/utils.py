@@ -10,11 +10,14 @@ from typing import Any, Callable, Iterable, Optional, TypeVar, Union
 from unittest.mock import DEFAULT, MagicMock
 
 import pytest_mock
+from pydepict.consts import Atom
 
 from pydepict.errors import ParserError
 from pydepict.parser import Parser, Stream
 
 T = TypeVar("T")
+
+BRACKET_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
 
 def apply_parse_method(meth_name: str, value: Union[str, Stream]) -> T:
@@ -74,3 +77,7 @@ def patch_parse_method(
     mock.side_effect = side_effect
 
     return mock
+
+
+def format_bracket_atom(atom: Atom) -> str:
+    return BRACKET_ATOM_TEMPLATE.format(**atom)
