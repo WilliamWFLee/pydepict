@@ -25,7 +25,7 @@ def test_parse_valid_symbols(valid_element: str):
 
 def test_parse_invalid_symbols(invalid_element: str):
     """
-    Tests parsing lowercase element symbols, which should return :data:`None`
+    Tests parsing non-existent element symbols, which should return :data:`None`
     """
     with pytest.raises(ParserError):
         apply_parse_method("element_symbol", invalid_element)

@@ -9,6 +9,7 @@ from pydepict.consts import (
     CHARGE_SYMBOLS,
     ELEMENT_SYMBOLS,
     MIN_CHARGE_MAGNITUDE,
+    ORGANIC_SYMBOLS,
     TERMINATORS,
 )
 
@@ -28,12 +29,22 @@ def valid_element(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
+@pytest.fixture(scope="package", params=NONEXISTENT_ELEMENT_SYMBOLS)
+def invalid_element(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+# Organic symbols
+@pytest.fixture(scope="package", params=ORGANIC_SYMBOLS)
+def valid_organic(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
 @pytest.fixture(
     scope="package",
-    params=[element.lower() for element in ELEMENT_SYMBOLS if element.isalpha()]
-    + NONEXISTENT_ELEMENT_SYMBOLS,
+    params=[element for element in ELEMENT_SYMBOLS if element not in ORGANIC_SYMBOLS],
 )
-def invalid_element(request: pytest.FixtureRequest) -> str:
+def valid_element_not_organic(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
