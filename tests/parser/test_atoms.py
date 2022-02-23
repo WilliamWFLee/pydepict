@@ -13,7 +13,7 @@ from unittest.mock import DEFAULT
 import pytest
 import pytest_mock
 
-from pydepict.consts import AROMATIC_SYMBOLS, STANDARD_SYMBOLS, Atom, AtomAttribute
+from pydepict.consts import Atom, AtomBondAttribute
 from pydepict.parser import Stream
 from tests.parser.utils import apply_parse_method, patch_parse_method
 
@@ -92,7 +92,7 @@ def atom(
 
         return inner
 
-    def length(attr: str, value: AtomAttribute):
+    def length(attr: str, value: AtomBondAttribute):
         if attr == "element_symbol":
             return len(value)
         if attr == "isotope":
@@ -125,7 +125,7 @@ def test_atom_element(atom: Atom, element: str):
     assert atom["element"].title() == element.title()
 
 
-def test_atom_aromaticitty(atom: Atom, element: str):
+def test_atom_aromaticity(atom: Atom, element: str):
     assert atom["aromatic"] == (True if element.islower() else False)
 
 
