@@ -404,7 +404,7 @@ class Parser:
     def parse_line(self):
         """
         Parses a line. A line is an atom, atoms that follow it and any branches
-        connected to it.
+        that begin at the same level of nesting as the first atom.
 
         :raises ParserError: If no atom for the start of the line is found
         """
