@@ -6,7 +6,6 @@ tests.parser.test_atoms
 Tests the parsing of atom strings
 """
 
-from argparse import ArgumentError
 from typing import Optional
 from unittest.mock import DEFAULT
 
@@ -101,7 +100,7 @@ def atom(
             return len(str(value)) + 1
         if attr == "charge":
             return len(f"{value:+}")
-        raise ArgumentError("attr", "is not a recognised element attribute")
+        raise ValueError("attr", "is not a recognised element attribute")
 
     for attr, value in [
         ("isotope", isotope),
