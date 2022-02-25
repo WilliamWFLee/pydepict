@@ -9,19 +9,31 @@ Parsing for strings conforming to the OpenSMILES specification
 import string
 import warnings
 from functools import wraps
-from typing import Callable, Generic, Iterable, Optional, Type, TypeVar, Union
+from typing import (
+    Callable,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import networkx as nx
 
 from .consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
+    DEFAULT_ATOM,
     ELEMENT_SYMBOL_FIRST_CHARS,
     ELEMENT_SYMBOLS,
     ORGANIC_SYMBOL_FIRST_CHARS,
     ORGANIC_SYMBOLS,
     TERMINATORS,
     Atom,
+    Bond,
 )
 from .errors import ParserError, ParserStateException, ParserWarning
 
@@ -29,6 +41,21 @@ __all__ = ["Stream", "Parser"]
 
 T = TypeVar("T")
 E = TypeVar("E", Type[ParserError], Type[ParserWarning])
+
+
+def _new_atom(**attrs) -> Atom:
+    """
+    Create new atom attributes dictionary from default atom attribute template.
+
+    Keyword arguments can be used to override defaults.
+    Raises :class:`ValueError`
+    """
+    atom = DEFAULT_ATOM.copy()
+    for attr, value in attrs.items():
+        if attr not in atom:
+            raise KeyError(attr)
+        atom[attr] = value
+    return atom
 
 
 class Stream(Generic[T]):
@@ -386,13 +413,7 @@ class Parser:
         """
 
         # Default atom attributes
-        atom = {
-            "isotope": None,
-            "hcount": None,
-            "charge": 0,
-            "class": None,
-            "aromatic": False,
-        }
+        atom = _new_atom()
 
         if self._stream.peek() == "[":
             # Bracket atom
@@ -419,9 +440,40 @@ class Parser:
         return atom
 
     @_catch_stop_iteration
+    def parse_chain(self) -> Tuple[List[Atom], List[Bond]]:
+        """
+        Parses a chain from the stream.
+
+        A chain is composed of consecutive bonded atoms,
+        (which may be the dot bond) without branching.
+        Must be associated with a preceding atom.
+
+        :return: A tuple of a list of atoms and list of bonds between them,
+                 in parse order. The number of atoms and bonds are equal.
+        :rtype: Tuple[List[Atom], List[Bond]]
+        """
+        atoms = []
+        bonds = []
+        while True:
+            # Determine bond order
+            try:
+                bonds.append({"order": self.parse_bond()})
+            except ParserError:
+                bonds.append({"order": 1})
+            try:
+                atoms.append(self.parse_atom())
+            except ParserError:
+                break
+        if not atoms:
+            raise self._new_exception("Expected atom")
+        return atoms, bonds
+
+    @_catch_stop_iteration
     def parse_line(self):
         """
-        Parses a line. A line is an atom, atoms that follow it and any branches
+        Parses a line from the stream.
+
+        A line is an atom, atoms that follow it and any branches
         that begin at the same level of nesting as the first atom.
 
         :raises ParserError: If no atom for the start of the line is found
@@ -429,15 +481,23 @@ class Parser:
 
         self._g.add_node(self._atom_index, **self.parse_atom())
         self._atom_index += 1
+        while True:
+            try:
+                chain = self.parse_chain()
+            except ParserError:
+                break
+            for atom, bond in zip(*chain):
+                self._g.add_node(self._atom_index, **atom)
+                self._g.add_edge(self._atom_index - 1, self._atom_index, **bond)
+                self._atom_index += 1
 
-    def parse_terminator(self) -> None:
+    def parse_terminator(self):
         """
         Parses a terminator.
 
         :raises ParserError: If terminator is not found, and stream is not at end.
         """
         self.expect(TERMINATORS, "terminator", None)
-        return None
 
     def parse(self) -> nx.Graph:
         """

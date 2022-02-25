@@ -44,7 +44,18 @@ BOND_TO_ORDER: Dict[str, float] = {
 
 MIN_CHARGE_MAGNITUDE = 15
 
+# PARSER TEMPLATES
+
+DEFAULT_ATOM = {
+    "isotope": None,
+    "element": "*",
+    "hcount": None,
+    "charge": 0,
+    "class": None,
+    "aromatic": False,
+}
+
 # TYPE CONSTANTS
 
-AtomAttribute = Union[bool, str, int, float]
-Atom = Dict[str, Optional[AtomAttribute]]
+AtomBondAttribute = Union[bool, str, int, float]
+Atom = Bond = Dict[str, Optional[AtomBondAttribute]]
