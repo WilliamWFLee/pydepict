@@ -27,6 +27,7 @@ from .consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
     DEFAULT_ATOM,
+    DEFAULT_BOND,
     ELEMENT_SYMBOL_FIRST_CHARS,
     ELEMENT_SYMBOLS,
     ORGANIC_SYMBOL_FIRST_CHARS,
@@ -45,10 +46,10 @@ E = TypeVar("E", Type[ParserError], Type[ParserWarning])
 
 def _new_atom(**attrs) -> Atom:
     """
-    Create new atom attributes dictionary from default atom attribute template.
+    Create new atom attributes dictionary from default atom attributes template.
 
     Keyword arguments can be used to override defaults.
-    Raises :class:`ValueError`
+    Raises :class:`KeyError` if any keyword attributes do not exist
     """
     atom = DEFAULT_ATOM.copy()
     for attr, value in attrs.items():
@@ -56,6 +57,21 @@ def _new_atom(**attrs) -> Atom:
             raise KeyError(attr)
         atom[attr] = value
     return atom
+
+
+def _new_bond(**attrs) -> Bond:
+    """
+    Create new bond attributes dictionary from default bond attributes template.
+
+    Keyword arguments can be used to override defaults.
+    Raises :class:`KeyError` if any keyword attributes do not exist
+    """
+    bond = DEFAULT_BOND.copy()
+    for attr, value in attrs.items():
+        if attr not in bond:
+            raise KeyError(attr)
+        bond[attr] = value
+    return bond
 
 
 class Stream(Generic[T]):
@@ -217,16 +233,16 @@ class Parser:
         return int(number)
 
     @_catch_stop_iteration
-    def parse_bond(self) -> float:
+    def parse_bond(self) -> Bond:
         """
         Parses a bond symbol from the stream
 
         :raises ParserError: If invalid bond symbol is encountered
-        :return: The bond order of the bond symbol
-        :rtype: float
+        :return: A dictionary of attributes for the parsed bond
+        :rtype: Bond
         """
         symbol = self.expect(BOND_TO_ORDER, "bond")
-        return BOND_TO_ORDER[symbol]
+        return _new_bond(order=BOND_TO_ORDER[symbol])
 
     @_catch_stop_iteration
     def parse_isotope(self) -> int:
@@ -440,7 +456,9 @@ class Parser:
         return atom
 
     @_catch_stop_iteration
-    def parse_chain(self) -> Tuple[List[Atom], List[Bond]]:
+    def parse_chain(
+        self, prev_is_aromatic: bool = False
+    ) -> Tuple[List[Atom], List[Bond]]:
         """
         Parses a chain from the stream.
 
@@ -448,25 +466,35 @@ class Parser:
         (which may be the dot bond) without branching.
         Must be associated with a preceding atom.
 
+        :param prev_is_aromatic: Whether the atom preceding this chain
+                                 is aromatic or not. Defaults to :data:`False`.
+        :rtype: bool
         :return: A tuple of a list of atoms and list of bonds between them,
                  in parse order. The number of atoms and bonds are equal.
         :rtype: Tuple[List[Atom], List[Bond]]
         """
-        atoms = []
+        atoms = [{"aromatic": prev_is_aromatic}]
         bonds = []
         while True:
             # Determine bond order
             try:
-                bonds.append({"order": self.parse_bond()})
+                bond = self.parse_bond()
             except ParserError:
-                bonds.append({"order": 1})
+                bond = None
             try:
-                atoms.append(self.parse_atom())
+                atom = self.parse_atom()
             except ParserError:
                 break
+            if bond is None:
+                if atom["aromatic"] and atoms[-1]["aromatic"]:
+                    bond = _new_bond(order=1.5)
+                else:
+                    bond = _new_bond(order=1)
+            atoms.append(atom)
+            bonds.append(bond)
         if not atoms:
             raise self._new_exception("Expected atom")
-        return atoms, bonds
+        return atoms[1:], bonds
 
     @_catch_stop_iteration
     def parse_line(self):
@@ -483,7 +511,9 @@ class Parser:
         self._atom_index += 1
         while True:
             try:
-                chain = self.parse_chain()
+                chain = self.parse_chain(
+                    self._g.nodes[self._atom_index - 1]["aromatic"]
+                )
             except ParserError:
                 break
             for atom, bond in zip(*chain):
@@ -499,6 +529,24 @@ class Parser:
         """
         self.expect(TERMINATORS, "terminator", None)
 
+    def _setup_parse(self):
+        """
+        Performs pre-parsing setup setups.
+
+        Instantiates graph, atom index and stream
+        """
+        self._g = nx.Graph()
+        self._atom_index = 0
+        self._stream = Stream(self.smiles)
+
+    def _teardown_parse(self):
+        """
+        Performs post-parsing teardown steps
+
+        Deletes graph, atom index and stream attributes
+        """
+        del self._g, self._atom_index, self._stream
+
     def parse(self) -> nx.Graph:
         """
         Parse the given SMILES string to produce a graph representation.
@@ -506,14 +554,10 @@ class Parser:
         :return: The graph represented by the string
         :rtype: nx.Graph
         """
-        self._g = nx.Graph()
-        self._atom_index = 0
-        self._stream = Stream(self.smiles)
-
-        self.parse_line()
-        self.parse_terminator()
-
+        self._setup_parse()
         try:
+            self.parse_line()
+            self.parse_terminator()
             return self._g
         finally:
-            del self._g, self._atom_index, self._stream
+            self._teardown_parse()

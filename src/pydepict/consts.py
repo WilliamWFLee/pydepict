@@ -6,7 +6,7 @@ pydepict.consts
 Constants such as element symbols, bond orders, other parsing symbols
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 # ELEMENT SYMBOLS
 
@@ -54,8 +54,12 @@ DEFAULT_ATOM = {
     "class": None,
     "aromatic": False,
 }
+DEFAULT_BOND = {
+    "order": 1
+}
 
 # TYPE CONSTANTS
 
 AtomBondAttribute = Union[bool, str, int, float]
 Atom = Bond = Dict[str, Optional[AtomBondAttribute]]
+Chain = Tuple[List[Atom], List[Bond]]

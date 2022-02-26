@@ -19,7 +19,7 @@ def test_valid_bond(valid_bond: str):
     Tests parsing valid bond symbols
     """
     result = apply_parse_method("bond", valid_bond)
-    assert result == BOND_TO_ORDER[valid_bond]
+    assert result["order"] == BOND_TO_ORDER[valid_bond]
 
 
 def test_invalid_bond(invalid_bond: str):
