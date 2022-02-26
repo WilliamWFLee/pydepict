@@ -11,7 +11,8 @@ import string
 
 import pytest
 
-from pydepict.parser import Parser
+from pydepict import parser
+from pydepict.parser import Stream
 
 STRING_LENGTH = 20
 
@@ -22,15 +23,13 @@ def random_string() -> str:
 
 
 @pytest.fixture
-def parser(random_string: str) -> str:
-    parser = Parser(random_string)
-    parser._setup_parse()
-    return parser
+def stream(random_string: str) -> Stream[str]:
+    return Stream(random_string)
 
 
 @pytest.mark.parametrize("offset", range(0, STRING_LENGTH + 1))
-def test_remainder(parser: Parser, random_string: str, offset: int):
+def test_remainder(stream: Stream[str], random_string: str, offset: int):
     for _ in range(offset):
-        next(parser._stream)
-    result = parser.get_remainder()
+        next(stream)
+    result = parser.get_remainder(stream)
     assert result == random_string[offset:]

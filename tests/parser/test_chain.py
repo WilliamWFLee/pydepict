@@ -9,9 +9,10 @@ Tests the parsing of chains
 import pytest
 import pytest_mock
 
+from pydepict import parser
 from pydepict.consts import Chain
 from pydepict.errors import ParserError
-from pydepict.parser import Parser, _new_atom, _new_bond
+from pydepict.parser import Stream, new_atom, new_bond
 
 from .utils import patch_parse_method
 
@@ -103,7 +104,7 @@ def chain(
     prev_aromatic: bool,
 ) -> Chain:
     atoms, bonds = request.param
-    atoms = [_new_atom(**atom) for atom in atoms]
+    atoms = [new_atom(**atom) for atom in atoms]
 
     patch_parse_method(mocker, "atom", side_effect=atoms)
     patch_parse_method(
@@ -124,23 +125,16 @@ def chain(
     ):
         if bond is None:
             if left_aromatic and right_aromatic:
-                new_bonds.append(_new_bond(order=1.5))
+                new_bonds.append(new_bond(order=1.5))
             else:
-                new_bonds.append(_new_bond(order=1))
+                new_bonds.append(new_bond(order=1))
         else:
             new_bonds.append(bond)
 
     return atoms, new_bonds
 
 
-@pytest.fixture
-def parser() -> Parser:
-    parser = Parser("")
-    parser._setup_parse()
-    return parser
-
-
-def test_valid_chain(parser: Parser, chain: Chain, prev_aromatic: bool):
-    atoms, bonds = parser.parse_chain(prev_aromatic)
+def test_valid_chain(chain: Chain, prev_aromatic: bool):
+    atoms, bonds = parser.parse_chain(Stream(""), prev_aromatic)
     assert atoms == chain[0]
     assert bonds == chain[1]

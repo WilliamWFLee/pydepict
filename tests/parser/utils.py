@@ -10,17 +10,18 @@ from typing import Any, Callable, Iterable, Optional, TypeVar, Union
 from unittest.mock import DEFAULT, MagicMock
 
 import pytest_mock
-from pydepict.consts import Atom
 
+from pydepict import parser
+from pydepict.consts import Atom
 from pydepict.errors import ParserError
-from pydepict.parser import Parser, Stream
+from pydepict.parser import Stream
 
 T = TypeVar("T")
 
 BRACKET_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
 
-def apply_parse_method(meth_name: str, value: Union[str, Stream]) -> T:
+def apply_parse_method(meth_name: str, value: Union[str, Stream], *args) -> T:
     """
     Applies an parse method with an new instance of :class:`Stream`
     and returns the value
@@ -32,17 +33,15 @@ def apply_parse_method(meth_name: str, value: Union[str, Stream]) -> T:
     :return: The value returned from the method
     :rtype: T
     """
-    parser = Parser("")
     if type(value) == str:
         stream = Stream(value)
     else:
         stream = value
-    parser._stream = stream
 
     meth = getattr(parser, f"parse_{meth_name}", None)
     if meth is None:
         raise Exception(f"Parse method not found: 'parse_{meth_name}'")
-    return meth()
+    return meth(stream, *args)
 
 
 def patch_parse_method(
@@ -72,7 +71,7 @@ def patch_parse_method(
         pass
     else:
         side_effect = list(side_effect) + [ParserError("", -1)]
-    mock = mocker.patch.object(Parser, f"parse_{meth_name}")
+    mock = mocker.patch.object(parser, f"parse_{meth_name}")
     mock.return_value = return_value
     mock.side_effect = side_effect
 

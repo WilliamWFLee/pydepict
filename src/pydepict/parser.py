@@ -36,42 +36,15 @@ from .consts import (
     Atom,
     Bond,
 )
-from .errors import ParserError, ParserStateException, ParserWarning
+from .errors import ParserError, ParserWarning
 
-__all__ = ["Stream", "Parser"]
+__all__ = ["Stream", "parse"]
 
 T = TypeVar("T")
 E = TypeVar("E", Type[ParserError], Type[ParserWarning])
 
-
-def _new_atom(**attrs) -> Atom:
-    """
-    Create new atom attributes dictionary from default atom attributes template.
-
-    Keyword arguments can be used to override defaults.
-    Raises :class:`KeyError` if any keyword attributes do not exist
-    """
-    atom = DEFAULT_ATOM.copy()
-    for attr, value in attrs.items():
-        if attr not in atom:
-            raise KeyError(attr)
-        atom[attr] = value
-    return atom
-
-
-def _new_bond(**attrs) -> Bond:
-    """
-    Create new bond attributes dictionary from default bond attributes template.
-
-    Keyword arguments can be used to override defaults.
-    Raises :class:`KeyError` if any keyword attributes do not exist
-    """
-    bond = DEFAULT_BOND.copy()
-    for attr, value in attrs.items():
-        if attr not in bond:
-            raise KeyError(attr)
-        bond[attr] = value
-    return bond
+# Sentinel object
+EXPECT_DEFAULT = object()
 
 
 class Stream(Generic[T]):
@@ -123,451 +96,514 @@ class Stream(Generic[T]):
         return self._peek
 
 
-class Parser:
+def new_atom(**attrs) -> Atom:
     """
-    Class representing a SMILES parser
+    Create new atom attributes dictionary from default atom attributes template.
 
-    .. attribute:: smiles
+    Keyword arguments can be used to override defaults.
+    Raises :class:`KeyError` if any keyword attributes do not exist
+    """
+    atom = DEFAULT_ATOM.copy()
+    for attr, value in attrs.items():
+        if attr not in atom:
+            raise KeyError(attr)
+        atom[attr] = value
+    return atom
 
-        The SMILES string that is parsed by this instance.
 
-        :type: str
+def new_bond(**attrs) -> Bond:
+    """
+    Create new bond attributes dictionary from default bond attributes template.
+
+    Keyword arguments can be used to override defaults.
+    Raises :class:`KeyError` if any keyword attributes do not exist
+    """
+    bond = DEFAULT_BOND.copy()
+    for attr, value in attrs.items():
+        if attr not in bond:
+            raise KeyError(attr)
+        bond[attr] = value
+    return bond
+
+
+def catch_stop_iteration(func: Callable[..., T]) -> Callable[..., T]:
+    """
+    Decorator for methods that throw :class:`StopIteration`.
+    Wraps the method such that the exception is caught, and :class:`ParserError`
+    is thrown instead.
+
+    :param func: The function to decorate
+    :type func: Callable[[Stream], T]
+    :return: The decorated function
+    :rtype: Callable[[Stream], T]
     """
 
-    # Sentinel object
-    DEFAULT = object()
-
-    def __init__(self, smiles: str):
-        self.smiles = smiles
-
-    def _catch_stop_iteration(func: Callable[[], T]) -> Callable[[], T]:
-        """
-        Decorator for methods that throw :class:`StopIteration`.
-        Wraps the method such that the exception is caught, and :class:`ParserError`
-        is thrown instead.
-
-        :param func: The function to decorate
-        :type func: Callable[[Stream], T]
-        :return: The decorated function
-        :rtype: Callable[[Stream], T]
-        """
-
-        @wraps(func)
-        def wrapper(self, *args, **kwargs) -> T:
-            try:
-                return func(self, *args, **kwargs)
-            except StopIteration:
-                raise self._new_exception("Unexpected end-of-stream")
-
-        return wrapper
-
-    def _new_exception(self, msg: str, exc_type: E = ParserError) -> E:
-        stream = getattr(self, "_stream", None)
-        if stream is None:
-            raise ParserStateException(
-                "New parser error cannot be instantiated if stream does not exist"
-            )
-        return exc_type(msg, stream.pos)
-
-    def expect(
-        self,
-        symbols: Iterable[str],
-        terminal: Optional[str] = None,
-        default: Union[str, object] = DEFAULT,
-    ) -> Union[str, object]:
-        """
-        Expect the next string to be any character
-        from the specified list :param:`symbols`, otherwise raise :class:`ParserError`.
-
-        If end-of-stream is reached, then return :param:`default` if specified,
-        or raise :class:`ParserError`.
-
-        :param symbols: An iterable of symbols to expect
-        :type symbols: Iterable[str]
-        :param terminal: Name of the terminal to expect, used for error raising
-        :type terminal: Optional[str]
-        :param default: Value to return if end-of-stream is reached
-        :type default: Union[str, object]
-        :raises ParserError: If next symbol in stream is not an expected symbol
-        :return: The symbol from :param:`symbols` encountered.
-        :rtype: Iterable[str]
-        """
+    @wraps(func)
+    def wrapper(stream, *args, **kwargs) -> T:
         try:
-            peek = self._stream.peek()
+            return func(stream, *args, **kwargs)
         except StopIteration:
-            if default != self.DEFAULT:
-                return default
-            else:
-                raise self._new_exception("Unexpected end-of-stream")
+            raise new_exception("Unexpected end-of-stream", stream)
 
-        if peek in symbols:
-            return next(self._stream)
+    return wrapper
 
-        expected = (
-            terminal
-            if terminal is not None
-            else ", ".join(repr(symbol) for symbol in symbols)
-        )
-        msg = f"Expected {expected}, got {self._stream.peek()!r}"
-        raise self._new_exception(msg)
 
-    @_catch_stop_iteration
-    def parse_number(self) -> int:
-        """
-        Parse a number (integer) from the stream
+def new_exception(msg: str, stream: Stream, exc_type: E = ParserError) -> E:
+    """
+    Instantiates a new parser exception (default) or warning with the specified message,
+    from the specified stream.
 
-        :raise ParserError: If no number is next in stream
-        :return: The parsed number
-        :rtype: int
-        """
-        number = ""
-        while True:
-            try:
-                number += self.parse_digit()
-            except ParserError:
-                break
+    :param msg: The exception message
+    :type msg: str
+    :param stream: The stream to use
+    :type stream: Stream
+    :param exc_type: The exception class to use, defaults to ParserError
+    :type exc_type: E, optional
+    :return: The new exception
+    :rtype: E
+    """
+    return exc_type(msg, stream.pos)
 
-        if not number:
-            raise self._new_exception(f"Expected number, got {self._stream.peek()}")
 
-        return int(number)
+def expect(
+    stream: Stream[str],
+    symbols: Iterable[str],
+    terminal: Optional[str] = None,
+    default: Union[str, object] = EXPECT_DEFAULT,
+) -> Union[str, object]:
+    """
+    Expect the next string in the specified stream to be any character
+    from the specified list :param:`symbols`, otherwise raise :class:`ParserError`.
 
-    @_catch_stop_iteration
-    def parse_bond(self) -> Bond:
-        """
-        Parses a bond symbol from the stream
+    If end-of-stream is reached, then return :param:`default` if specified,
+    or raise :class:`ParserError`.
 
-        :raises ParserError: If invalid bond symbol is encountered
-        :return: A dictionary of attributes for the parsed bond
-        :rtype: Bond
-        """
-        symbol = self.expect(BOND_TO_ORDER, "bond")
-        return _new_bond(order=BOND_TO_ORDER[symbol])
-
-    @_catch_stop_iteration
-    def parse_isotope(self) -> int:
-        """
-        Parses an isotope specification from the stream
-
-        :return: The isotope number parsed
-        :rtype: Optional[int]
-        """
-        return self.parse_number()
-
-    @_catch_stop_iteration
-    def parse_element_symbol(self) -> str:
-        """
-        Parses an element symbol from the stream
-
-        :raises ParserError: If the element symbol is not a known element,
-                             or a valid element symbol is not read
-        :return: The element parsed
-        :rtype: str
-        """
-        element = self.expect(ELEMENT_SYMBOL_FIRST_CHARS, "alphabetic character")
-        next_char = self._stream.peek("")
-        if next_char and element + next_char in ELEMENT_SYMBOLS:
-            element += next(self._stream)
-
-        if element in ELEMENT_SYMBOLS:
-            return element
-
-        raise self._new_exception(f"Invalid element symbol {element!r}")
-
-    @_catch_stop_iteration
-    def parse_digit(self) -> str:
-        """
-        Parses a single digit from the stream
-
-        :raises ParserError: If character from stream is not a digit
-        :return: The digit parsed
-        :rtype: str
-        """
-        return self.expect(string.digits, "digit")
-
-    @_catch_stop_iteration
-    def parse_hcount(self) -> int:
-        """
-        Parses hydrogen count from the stream
-
-        :raises ParserError: If the next symbol in the stream is not 'H'
-        :return: The hydrogen count
-        :rtype: int
-        """
-        self.expect(("H",), "'H'")
-        try:
-            count = int(self.parse_digit())
-        except ParserError:
-            count = 1
-
-        return count
-
-    @_catch_stop_iteration
-    def parse_charge(self) -> int:
-        """
-        Parses a charge from the stream
-
-        :return: The charge parsed
-        :rtype: int
-        """
-        sign = self.expect(CHARGE_SYMBOLS, "charge sign")
-        if self._stream.peek(None) == sign:
-            next(self._stream)
-            warnings.warn(
-                self._new_exception(
-                    f"Use of {2 * sign} instead of {sign}2 is deprecated",
-                    ParserWarning,
-                )
-            )
-            return int(sign + "2")
-        try:
-            first_digit = self.parse_digit()
-        except ParserError:
-            return int(sign + "1")
-        try:
-            second_digit = self.parse_digit()
-        except ParserError:
-            return int(sign + first_digit)
-        return int(sign + first_digit + second_digit)
-
-    @_catch_stop_iteration
-    def parse_class(self) -> int:
-        """
-        Parses an atom class specification from the stream.
-
-        :raises ParserError: If no atom class specification is found
-        :return: The atom class as an :class:`int`
-        :rtype: int
-        """
-        self.expect(":", "colon for atom class")
-        try:
-            return self.parse_number()
-        except ParserError:
-            raise self._new_exception("Expected number for atom class") from None
-
-    @_catch_stop_iteration
-    def parse_bracket_atom(self) -> Atom:
-        """
-        Parses a bracket atom from the stream
-
-        :raises ParserError: If the opening and closing bracket is not found,
-                             or no element is found
-        :return: A dictionary of atom attributes
-        :rtype: Atom
-        """
-
-        attrs = {}
-
-        self.expect("[", "opening bracket for atom")
-        try:
-            attrs["isotope"] = self.parse_isotope()
-        except ParserError:
-            attrs["isotope"] = None
-
-        attrs["element"] = self.parse_element_symbol()
-        for attr, parse_method, default in [
-            ("hcount", self.parse_hcount, 0),
-            ("charge", self.parse_charge, 0),
-            ("class", self.parse_class, None),
-        ]:
-            try:
-                attrs[attr] = parse_method()
-            except ParserError:
-                attrs[attr] = default
-
-        self.expect("]", "closing bracket for atom")
-
-        return attrs
-
-    @_catch_stop_iteration
-    def parse_organic_symbol(self) -> str:
-        """
-        Parses an organic subset symbol from the stream.
-
-        :raises ParserError: If the element symbol is not a known element,
-                             not a valid element symbol, or is a valid element symbol
-                             that cannot be used in an organic context
-        :return: The element parsed
-        :rtype: str
-        """
-        try:
-            element = self.expect(ORGANIC_SYMBOL_FIRST_CHARS, "alphabetic character")
-        except ParserError:
-            if self._stream.peek() in ELEMENT_SYMBOLS:
-                raise self._new_exception(
-                    f"Element symbol {self._stream.peek()!r} "
-                    "cannot be used in an organic context"
-                )
-            raise
-        next_char = self._stream.peek("")
-        if next_char:
-            if element + next_char in ORGANIC_SYMBOLS:
-                element += next(self._stream)
-            elif element + next_char in ELEMENT_SYMBOLS:
-                raise self._new_exception(
-                    f"Element symbol {element + next_char!r} "
-                    "cannot be used in an organic context"
-                )
-
-        if element in ORGANIC_SYMBOLS:
-            return element
-        if element in ELEMENT_SYMBOLS:
-            raise self._new_exception(
-                f"Element symbol {element!r} cannot be used in an organic context"
-            )
-
-        raise self._new_exception(f"Invalid element symbol {element!r}")
-
-    @_catch_stop_iteration
-    def parse_atom(self) -> Atom:
-        """
-        Parses an atom in the stream.
-
-        :raises ParserError: If no atom is found
-        :return: A dictionary of atom attributes
-        :rtype: Atom
-        """
-
-        # Default atom attributes
-        atom = _new_atom()
-
-        if self._stream.peek() == "[":
-            # Bracket atom
-            try:
-                attrs = self.parse_bracket_atom()
-            except ParserError:
-                raise self._new_exception("Expected atom") from None
-            else:
-                atom.update(**attrs)
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :param symbols: An iterable of symbols to expect
+    :type symbols: Iterable[str]
+    :param terminal: Name of the terminal to expect, used for error raising
+    :type terminal: Optional[str]
+    :param default: Value to return if end-of-stream is reached
+    :type default: Union[str, object]
+    :raises ParserError: If next symbol in stream is not an expected symbol
+    :return: The symbol from :param:`symbols` encountered.
+    :rtype: Iterable[str]
+    """
+    try:
+        peek = stream.peek()
+    except StopIteration:
+        if default != EXPECT_DEFAULT:
+            return default
         else:
-            # Organic subset symbol
-            try:
-                element = self.parse_organic_symbol()
-            except ParserError:
-                raise self._new_exception("Expected atom") from None
-            else:
-                atom["element"] = element
+            raise new_exception("Unexpected end-of-stream", stream)
 
-        # Deal with aromatic atoms
-        if atom["element"].islower():
-            atom["element"] = atom["element"].upper()
-            atom["aromatic"] = True
+    if peek in symbols:
+        return next(stream)
 
-        return atom
+    expected = (
+        terminal
+        if terminal is not None
+        else ", ".join(repr(symbol) for symbol in symbols)
+    )
+    msg = f"Expected {expected}, got {stream.peek()!r}"
+    raise new_exception(msg, stream)
 
-    @_catch_stop_iteration
-    def parse_chain(
-        self, prev_is_aromatic: bool = False
-    ) -> Tuple[List[Atom], List[Bond]]:
-        """
-        Parses a chain from the stream.
 
-        A chain is composed of consecutive bonded atoms,
-        (which may be the dot bond) without branching.
-        Must be associated with a preceding atom.
+@catch_stop_iteration
+def parse_number(stream: Stream[str]) -> int:
+    """
+    Parse a number (integer) from the specified stream
 
-        :param prev_is_aromatic: Whether the atom preceding this chain
-                                 is aromatic or not. Defaults to :data:`False`.
-        :rtype: bool
-        :return: A tuple of a list of atoms and list of bonds between them,
-                 in parse order. The number of atoms and bonds are equal.
-        :rtype: Tuple[List[Atom], List[Bond]]
-        """
-        atoms = [{"aromatic": prev_is_aromatic}]
-        bonds = []
-        while True:
-            # Determine bond order
-            try:
-                bond = self.parse_bond()
-            except ParserError:
-                bond = None
-            try:
-                atom = self.parse_atom()
-            except ParserError:
-                break
-            if bond is None:
-                if atom["aromatic"] and atoms[-1]["aromatic"]:
-                    bond = _new_bond(order=1.5)
-                else:
-                    bond = _new_bond(order=1)
-            atoms.append(atom)
-            bonds.append(bond)
-        if not atoms:
-            raise self._new_exception("Expected atom")
-        return atoms[1:], bonds
-
-    @_catch_stop_iteration
-    def parse_line(self):
-        """
-        Parses a line from the stream.
-
-        A line is an atom, atoms that follow it and any branches
-        that begin at the same level of nesting as the first atom.
-
-        :raises ParserError: If no atom for the start of the line is found
-        """
-
-        self._g.add_node(self._atom_index, **self.parse_atom())
-        self._atom_index += 1
-        while True:
-            try:
-                chain = self.parse_chain(
-                    self._g.nodes[self._atom_index - 1]["aromatic"]
-                )
-            except ParserError:
-                break
-            for atom, bond in zip(*chain):
-                self._g.add_node(self._atom_index, **atom)
-                self._g.add_edge(self._atom_index - 1, self._atom_index, **bond)
-                self._atom_index += 1
-
-    def parse_terminator(self):
-        """
-        Parses a terminator.
-
-        :raises ParserError: If terminator is not found, and stream is not at end.
-        """
-        self.expect(TERMINATORS, "terminator", None)
-
-    def get_remainder(self) -> str:
-        """
-        Exhausts the rest of the stream, and returns the string from it.
-
-        :return: The string with the remaining characters from the stream
-        :rtype: str
-        """
-        return "".join(self._stream)
-
-    def _setup_parse(self):
-        """
-        Performs pre-parsing setup setups.
-
-        Instantiates graph, atom index and stream
-        """
-        self._g = nx.Graph()
-        self._atom_index = 0
-        self._stream = Stream(self.smiles)
-
-    def _teardown_parse(self):
-        """
-        Performs post-parsing teardown steps
-
-        Deletes graph, atom index and stream attributes
-        """
-        del self._g, self._atom_index, self._stream
-
-    def parse(self) -> Tuple[nx.Graph, str]:
-        """
-        Parse the SMILES string to produce a graph representation.
-
-        :return: A tuple of the graph represented by the SMILES string,
-                 and the remainder of the SMILEs after the terminator
-        :rtype: Tuple[nx.Graph, str]
-        """
-        self._setup_parse()
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raise ParserError: If no number is next in stream
+    :return: The parsed number
+    :rtype: int
+    """
+    number = ""
+    while True:
         try:
-            self.parse_line()
-            self.parse_terminator()
-            return self._g, self.get_remainder()
-        finally:
-            self._teardown_parse()
+            number += parse_digit(stream)
+        except ParserError:
+            break
+
+    if not number:
+        raise new_exception(f"Expected number, got {stream.peek()}", stream)
+
+    return int(number)
+
+
+@catch_stop_iteration
+def parse_bond(stream: Stream[str]) -> Bond:
+    """
+    Parses a bond symbol from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If invalid bond symbol is encountered
+    :return: A dictionary of attributes for the parsed bond
+    :rtype: Bond
+    """
+    symbol = expect(stream, BOND_TO_ORDER, "bond")
+    return new_bond(order=BOND_TO_ORDER[symbol])
+
+
+@catch_stop_iteration
+def parse_isotope(stream: Stream[str]) -> int:
+    """
+    Parses an isotope specification from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :return: The isotope number parsed
+    :rtype: Optional[int]
+    """
+    return parse_number(stream)
+
+
+@catch_stop_iteration
+def parse_element_symbol(stream) -> str:
+    """
+    Parses an element symbol from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If the element symbol is not a known element,
+                            or a valid element symbol is not read
+    :return: The element parsed
+    :rtype: str
+    """
+    element = expect(stream, ELEMENT_SYMBOL_FIRST_CHARS, "alphabetic character")
+    next_char = stream.peek("")
+    if next_char and element + next_char in ELEMENT_SYMBOLS:
+        element += next(stream)
+
+    if element in ELEMENT_SYMBOLS:
+        return element
+
+    raise new_exception(f"Invalid element symbol {element!r}", stream)
+
+
+@catch_stop_iteration
+def parse_digit(stream: Stream[str]) -> str:
+    """
+    Parses a single digit from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If character from stream is not a digit
+    :return: The digit parsed
+    :rtype: str
+    """
+    return expect(stream, string.digits, "digit")
+
+
+@catch_stop_iteration
+def parse_hcount(stream: Stream[str]) -> int:
+    """
+    Parses hydrogen count from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If the next symbol in the stream is not 'H'
+    :return: The hydrogen count
+    :rtype: int
+    """
+    expect(stream, ("H",), "'H'")
+    try:
+        count = int(parse_digit(stream))
+    except ParserError:
+        count = 1
+
+    return count
+
+
+@catch_stop_iteration
+def parse_charge(stream: Stream[str]) -> int:
+    """
+    Parses a charge from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :return: The charge parsed
+    :rtype: int
+    """
+    sign = expect(stream, CHARGE_SYMBOLS, "charge sign")
+    if stream.peek(None) == sign:
+        next(stream)
+        warnings.warn(
+            new_exception(
+                f"Use of {2 * sign} instead of {sign}2 is deprecated",
+                stream,
+                ParserWarning,
+            )
+        )
+        return int(sign + "2")
+    try:
+        first_digit = parse_digit(stream)
+    except ParserError:
+        return int(sign + "1")
+    try:
+        second_digit = parse_digit(stream)
+    except ParserError:
+        return int(sign + first_digit)
+    return int(sign + first_digit + second_digit)
+
+
+@catch_stop_iteration
+def parse_class(stream: Stream[str]) -> int:
+    """
+    Parses an atom class specification from the specified stream.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If no atom class specification is found
+    :return: The atom class as an :class:`int`
+    :rtype: int
+    """
+    expect(stream, ":", "colon for atom class")
+    try:
+        return parse_number(stream)
+    except ParserError:
+        raise new_exception("Expected number for atom class", stream) from None
+
+
+@catch_stop_iteration
+def parse_bracket_atom(stream: Stream[str]) -> Atom:
+    """
+    Parses a bracket atom from the specified stream
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If the opening and closing bracket is not found,
+                            or no element is found
+    :return: A dictionary of atom attributes
+    :rtype: Atom
+    """
+
+    attrs = {}
+
+    expect(stream, "[", "opening bracket for atom")
+    try:
+        attrs["isotope"] = parse_isotope(stream)
+    except ParserError:
+        attrs["isotope"] = None
+
+    attrs["element"] = parse_element_symbol(stream)
+    for attr, parse_method, default in [
+        ("hcount", parse_hcount, 0),
+        ("charge", parse_charge, 0),
+        ("class", parse_class, None),
+    ]:
+        try:
+            attrs[attr] = parse_method(stream)
+        except ParserError:
+            attrs[attr] = default
+
+    expect(stream, "]", "closing bracket for atom")
+
+    return attrs
+
+
+@catch_stop_iteration
+def parse_organic_symbol(stream: Stream[str]) -> str:
+    """
+    Parses an organic subset symbol from the specified stream.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If the element symbol is not a known element,
+                            not a valid element symbol, or is a valid element symbol
+                            that cannot be used in an organic context
+    :return: The element parsed
+    :rtype: str
+    """
+    try:
+        element = expect(stream, ORGANIC_SYMBOL_FIRST_CHARS, "alphabetic character")
+    except ParserError:
+        if stream.peek() in ELEMENT_SYMBOLS:
+            raise new_exception(
+                f"Element symbol {stream.peek()!r} "
+                "cannot be used in an organic context",
+                stream,
+            )
+        raise
+    next_char = stream.peek("")
+    if next_char:
+        if element + next_char in ORGANIC_SYMBOLS:
+            element += next(stream)
+        elif element + next_char in ELEMENT_SYMBOLS:
+            raise new_exception(
+                f"Element symbol {element + next_char!r} "
+                "cannot be used in an organic context",
+                stream,
+            )
+
+    if element in ORGANIC_SYMBOLS:
+        return element
+    if element in ELEMENT_SYMBOLS:
+        raise new_exception(
+            f"Element symbol {element!r} cannot be used in an organic context", stream
+        )
+
+    raise new_exception(f"Invalid element symbol {element!r}", stream)
+
+
+@catch_stop_iteration
+def parse_atom(stream: Stream[str]) -> Atom:
+    """
+    Parses an atom in the specified stream.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If no atom is found
+    :return: A dictionary of atom attributes
+    :rtype: Atom
+    """
+
+    # Default atom attributes
+    atom = new_atom()
+
+    if stream.peek() == "[":
+        # Bracket atom
+        try:
+            attrs = parse_bracket_atom(stream)
+        except ParserError:
+            raise new_exception("Expected atom", stream) from None
+        else:
+            atom.update(**attrs)
+    else:
+        # Organic subset symbol
+        try:
+            element = parse_organic_symbol(stream)
+        except ParserError:
+            raise new_exception("Expected atom", stream) from None
+        else:
+            atom["element"] = element
+
+    # Deal with aromatic atoms
+    if atom["element"].islower():
+        atom["element"] = atom["element"].upper()
+        atom["aromatic"] = True
+
+    return atom
+
+
+@catch_stop_iteration
+def parse_chain(
+    stream: Stream[str], prev_is_aromatic: bool = False
+) -> Tuple[List[Atom], List[Bond]]:
+    """
+    Parses a chain from the specified stream.
+
+    A chain is composed of consecutive bonded atoms,
+    (which may be the dot bond) without branching.
+    Must be associated with a preceding atom.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :param prev_is_aromatic: Whether the atom preceding this chain
+                                is aromatic or not. Defaults to :data:`False`.
+    :rtype: bool
+    :return: A tuple of a list of atoms and list of bonds between them,
+                in parse order. The number of atoms and bonds are equal.
+    :rtype: Tuple[List[Atom], List[Bond]]
+    """
+    atoms = [{"aromatic": prev_is_aromatic}]
+    bonds = []
+    while True:
+        # Determine bond order
+        try:
+            bond = parse_bond(stream)
+        except ParserError:
+            bond = None
+        try:
+            atom = parse_atom(stream)
+        except ParserError:
+            break
+        if bond is None:
+            if atom["aromatic"] and atoms[-1]["aromatic"]:
+                bond = new_bond(order=1.5)
+            else:
+                bond = new_bond(order=1)
+        atoms.append(atom)
+        bonds.append(bond)
+    if not atoms:
+        raise new_exception("Expected atom", stream)
+    return atoms[1:], bonds
+
+
+@catch_stop_iteration
+def parse_line(stream: Stream[str], graph: nx.Graph, atom_idx: int) -> int:
+    """
+    Parses a line from the specified stream, and extends the specified graph
+    with the new line.
+
+    A line is an atom, atoms that follow it and any branches
+    that begin at the same level of nesting as the first atom.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :param graph: The graph to add the new nodes to
+    :type graph: nx.Graph
+    :param atom_idx: The atom index to initially number new nodes from
+    :type atom_idx: int
+    :raises ParserError: If no atom for the start of the line is found
+    :return: The next atom index for the next node after this line
+    """
+
+    graph.add_node(atom_idx, **parse_atom(stream))
+    atom_idx += 1
+    while True:
+        try:
+            chain = parse_chain(stream, graph.nodes[atom_idx - 1]["aromatic"])
+        except ParserError:
+            break
+        for atom, bond in zip(*chain):
+            graph.add_node(atom_idx, **atom)
+            graph.add_edge(atom_idx - 1, atom_idx, **bond)
+            atom_idx += 1
+    return atom_idx
+
+
+def parse_terminator(stream: Stream[str]):
+    """
+    Parses a terminator.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If terminator is not found, and stream is not at end.
+    """
+    expect(stream, TERMINATORS, "terminator", None)
+
+
+def get_remainder(stream: Stream[str]) -> str:
+    """
+    Exhausts the rest of the specified stream, and returns the string from it.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :return: The string with the remaining characters from the stream
+    :rtype: str
+    """
+    return "".join(stream)
+
+
+def parse(smiles: str) -> Tuple[nx.Graph, str]:
+    """
+    Parse the specified SMILES string to produce a graph representation.
+
+    :param smiles: The SMILES string to parse
+    :type smiles: str
+    :return: A tuple of the graph represented by the SMILES string,
+                and the remainder of the SMILEs after the terminator
+    :rtype: Tuple[nx.Graph, str]
+    """
+    stream = Stream(smiles)
+    graph = nx.Graph()
+    atom_idx = 0
+
+    parse_line(stream, graph, atom_idx)
+    parse_terminator(stream)
+    return graph, get_remainder(stream)
