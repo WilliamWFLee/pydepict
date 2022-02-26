@@ -529,6 +529,15 @@ class Parser:
         """
         self.expect(TERMINATORS, "terminator", None)
 
+    def get_remainder(self) -> str:
+        """
+        Exhausts the rest of the stream, and returns the string from it.
+
+        :return: The string with the remaining characters from the stream
+        :rtype: str
+        """
+        return "".join(self._stream)
+
     def _setup_parse(self):
         """
         Performs pre-parsing setup setups.
@@ -547,17 +556,18 @@ class Parser:
         """
         del self._g, self._atom_index, self._stream
 
-    def parse(self) -> nx.Graph:
+    def parse(self) -> Tuple[nx.Graph, str]:
         """
-        Parse the given SMILES string to produce a graph representation.
+        Parse the SMILES string to produce a graph representation.
 
-        :return: The graph represented by the string
-        :rtype: nx.Graph
+        :return: A tuple of the graph represented by the SMILES string,
+                 and the remainder of the SMILEs after the terminator
+        :rtype: Tuple[nx.Graph, str]
         """
         self._setup_parse()
         try:
             self.parse_line()
             self.parse_terminator()
-            return self._g
+            return self._g, self.get_remainder()
         finally:
             self._teardown_parse()
