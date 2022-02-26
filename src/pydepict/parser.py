@@ -529,7 +529,7 @@ def parse_chain(
                 bond = new_bond(order=1)
         atoms.append(atom)
         bonds.append(bond)
-    if not atoms:
+    if not bonds:
         raise new_exception("Expected atom", stream)
     return atoms[1:], bonds
 
