@@ -23,6 +23,8 @@ from typing import (
 
 import networkx as nx
 
+from pydepict.utils import atom_valence
+
 from .consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
@@ -33,6 +35,7 @@ from .consts import (
     ORGANIC_SYMBOL_FIRST_CHARS,
     ORGANIC_SYMBOLS,
     TERMINATORS,
+    VALENCES,
     Atom,
     Bond,
 )
@@ -590,6 +593,34 @@ def get_remainder(stream: Stream[str]) -> str:
     return "".join(stream)
 
 
+def fill_hydrogens(graph: nx.Graph) -> str:
+    """
+    Fills the hcount attribute for atoms where it is :data:`None`
+    (implies the atom is organic subset).
+
+    :param graph: The graph to fill hydrogens for.
+    :type graph: nx.Graph
+    """
+    for atom_index, attrs in graph.nodes(data=True):
+        if attrs["hcount"] is None:
+            element = attrs["element"]
+            # Get all "normal" valences for the current atom
+            element_valences = VALENCES[element]
+            if element_valences is None:
+                continue
+            current_valence = atom_valence(atom_index, graph)
+            # Possible valences must be at least the current valence of the atom
+            possible_valencies = list(
+                filter(lambda x: x >= current_valence, element_valences)
+            )
+            if not possible_valencies:
+                # Hydrogen count is 0 if current valence
+                # is already higher than any known valence
+                graph.nodes[atom_index]["hcount"] = 0
+            target_valence = min(possible_valencies)
+            graph.nodes[atom_index]["hcount"] = target_valence - current_valence
+
+
 def parse(smiles: str) -> Tuple[nx.Graph, str]:
     """
     Parse the specified SMILES string to produce a graph representation.
@@ -604,6 +635,11 @@ def parse(smiles: str) -> Tuple[nx.Graph, str]:
     graph = nx.Graph()
     atom_idx = 0
 
+    # Syntax parsing + on-the-fly semantics
     parse_line(stream, graph, atom_idx)
     parse_terminator(stream)
+
+    # Post-parsing semantics
+    fill_hydrogens(graph)
+
     return graph, get_remainder(stream)

@@ -43,6 +43,18 @@ BOND_TO_ORDER: Dict[str, float] = {
 # PARSER SPECIFICATIONS
 
 MIN_CHARGE_MAGNITUDE = 15
+VALENCES: Dict[str, Optional[Tuple[int, ...]]] = {
+    "B": (3,),
+    "C": (4,),
+    "N": (3, 5),
+    "O": (2,),
+    "P": (3, 5),
+    "S": (2, 4, 6),
+    "F": (1,),
+    "Cl": (1,),
+    "Br": (1,),
+    "*": None,
+}
 
 # PARSER TEMPLATES
 
@@ -54,9 +66,7 @@ DEFAULT_ATOM = {
     "class": None,
     "aromatic": False,
 }
-DEFAULT_BOND = {
-    "order": 1
-}
+DEFAULT_BOND = {"order": 1}
 
 # TYPE CONSTANTS
 
