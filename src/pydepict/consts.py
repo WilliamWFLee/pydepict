@@ -49,7 +49,7 @@ MIN_CHARGE_MAGNITUDE = 15
 DEFAULT_ATOM = {
     "isotope": None,
     "element": "*",
-    "hcount": None,
+    "hcount": 0,
     "charge": 0,
     "class": None,
     "aromatic": False,
