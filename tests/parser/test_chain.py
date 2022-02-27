@@ -81,8 +81,8 @@ def prev_aromatic(request: pytest.FixtureRequest) -> bool:
         (  # Aromatic atoms
             [
                 {"element": "C", "aromatic": True},
-                {"element": "C"},
                 {"element": "C", "aromatic": True},
+                {"element": "C"},
                 {"element": "C"},
                 {"element": "C"},
                 {"element": "C"},
