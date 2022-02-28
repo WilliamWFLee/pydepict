@@ -12,9 +12,10 @@ from unittest.mock import DEFAULT
 import pytest
 import pytest_mock
 
+from pydepict import parser
 from pydepict.consts import Atom, AtomBondAttribute
-from pydepict.parser import Stream
-from tests.parser.utils import apply_parse_method, patch_parse_method
+from pydepict.parser import Stream, parse_atom
+from tests.parser.utils import apply_stream_parse_method, patch_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
@@ -63,12 +64,12 @@ def smiles(
     return SINGLE_ATOM_TEMPLATE.format(**attrs)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def stream(smiles: str) -> Stream:
     return Stream(smiles)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def atom(
     isotope: int,
     element: str,
@@ -76,7 +77,7 @@ def atom(
     charge: int,
     class_: int,
     stream: str,
-    module_mocker: pytest_mock.MockerFixture,
+    mocker: pytest_mock.MockerFixture,
 ) -> Atom:
     def increment_stream_pos_by(value: int):
         """
@@ -110,10 +111,13 @@ def atom(
         ("class", class_),
     ]:
         patch_parse_method(
-            module_mocker, attr, value, increment_stream_pos_by(length(attr, value))
+            mocker,
+            getattr(parser, f"parse_{attr}"),
+            value,
+            increment_stream_pos_by(length(attr, value)),
         )
 
-    return apply_parse_method("atom", stream)
+    return apply_stream_parse_method(parse_atom, stream)
 
 
 def test_atom_isotope(atom: Atom, isotope: Optional[int]):

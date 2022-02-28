@@ -21,14 +21,19 @@ T = TypeVar("T")
 BRACKET_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"
 
 
-def apply_parse_method(meth_name: str, value: Union[str, Stream], *args) -> T:
+def apply_stream_parse_method(
+    meth: Callable[..., T], value: Union[str, Stream], *args, **kwargs
+) -> T:
     """
-    Applies an parse method with an new instance of :class:`Stream`
-    and returns the value
+    Applies an parse method to a new instance of :class:`Stream` for :param:`value`,
+    and returns the result.
 
-    :param meth_name: The parse method name, without the ``parse_`` prefix
+    Additional positional and keyword arguments are passed to the parse method.
+
+    :param meth: The parse method. Must accept an instance of :class:`Stream`
+                 as its first argument.
     :type meth_name: str
-    :param value: The string used to instantiate the parser stream with
+    :param value: The string used to instantiate the stream with
     :type value: str
     :return: The value returned from the method
     :rtype: T
@@ -38,15 +43,12 @@ def apply_parse_method(meth_name: str, value: Union[str, Stream], *args) -> T:
     else:
         stream = value
 
-    meth = getattr(parser, f"parse_{meth_name}", None)
-    if meth is None:
-        raise Exception(f"Parse method not found: 'parse_{meth_name}'")
-    return meth(stream, *args)
+    return meth(stream, *args, **kwargs)
 
 
 def patch_parse_method(
     mocker: pytest_mock.MockerFixture,
-    meth_name: str,
+    meth: Callable,
     return_value: Optional[Any] = DEFAULT,
     side_effect: Optional[Union[Callable[[], T], Any, Iterable]] = None,
 ) -> MagicMock:
@@ -71,7 +73,7 @@ def patch_parse_method(
         pass
     else:
         side_effect = list(side_effect) + [ParserError("", -1)]
-    mock = mocker.patch.object(parser, f"parse_{meth_name}")
+    mock = mocker.patch.object(parser, meth.__name__)
     mock.return_value = return_value
     mock.side_effect = side_effect
 

@@ -9,12 +9,11 @@ Tests the parsing of chains
 import pytest
 import pytest_mock
 
-from pydepict import parser
 from pydepict.consts import Chain
 from pydepict.errors import ParserError
-from pydepict.parser import Stream, new_atom, new_bond
+from pydepict.parser import new_atom, new_bond, parse_atom, parse_bond, parse_chain
 
-from .utils import patch_parse_method
+from .utils import apply_stream_parse_method, patch_parse_method
 
 
 @pytest.fixture(params=[True, False])
@@ -106,11 +105,11 @@ def chain(
     atoms, bonds = request.param
     atoms = [new_atom(**atom) for atom in atoms]
 
-    patch_parse_method(mocker, "atom", side_effect=atoms)
+    patch_parse_method(mocker, parse_atom, side_effect=atoms)
     patch_parse_method(
         mocker,
-        "bond",
-        side_effect=[ParserError("", 0) if bond is None else bond for bond in bonds],
+        parse_bond,
+        side_effect=[ParserError("") if bond is None else bond for bond in bonds],
     )
 
     # Store aromatic attributes for each atom
@@ -135,6 +134,6 @@ def chain(
 
 
 def test_valid_chain(chain: Chain, prev_aromatic: bool):
-    atoms, bonds = parser.parse_chain(Stream(""), prev_aromatic)
-    assert atoms == chain[0]
+    atoms, bonds = apply_stream_parse_method(parse_chain, "a", prev_aromatic)
+    assert [atom for atom, _ in atoms] == chain[0]
     assert bonds == chain[1]
