@@ -8,6 +8,7 @@ Parsing for strings conforming to the OpenSMILES specification
 
 import string
 import warnings
+from collections import defaultdict
 from functools import wraps
 from typing import (
     Callable,
@@ -23,6 +24,7 @@ from typing import (
 
 import networkx as nx
 
+from pydepict.consts import AtomBondAttribute
 from pydepict.utils import atom_valence
 
 from .consts import (
@@ -37,7 +39,9 @@ from .consts import (
     TERMINATORS,
     VALENCES,
     Atom,
+    AtomRnums,
     Bond,
+    Rnums,
 )
 from .errors import ParserError, ParserWarning
 
@@ -99,7 +103,97 @@ class Stream(Generic[T]):
         return self._peek
 
 
-def new_atom(**attrs) -> Atom:
+def fill_hydrogens(graph: nx.Graph) -> str:
+    """
+    Fills the hcount attribute for atoms where it is :data:`None`
+    (implies the atom is organic subset).
+
+    :param graph: The graph to fill hydrogens for.
+    :type graph: nx.Graph
+    """
+    for atom_index, attrs in graph.nodes(data=True):
+        if attrs["hcount"] is None:
+            element = attrs["element"]
+            # Get all "normal" valences for the current atom
+            element_valences = VALENCES[element]
+            if element_valences is None:
+                continue
+            current_valence = atom_valence(atom_index, graph)
+            # Possible valences must be at least the current valence of the atom
+            possible_valencies = list(
+                filter(lambda x: x >= current_valence, element_valences)
+            )
+            if not possible_valencies:
+                # Hydrogen count is 0 if current valence
+                # is already higher than any known valence
+                graph.nodes[atom_index]["hcount"] = 0
+            target_valence = min(possible_valencies)
+            graph.nodes[atom_index]["hcount"] = target_valence - current_valence
+
+
+def resolve_rnums(
+    atom_rnums: AtomRnums, atom_index: int, rnums: Rnums, graph: nx.Graph
+):
+    """
+    Resolves a dictionary of rnum specifications for the specified atom,
+    using the specified dictionary of unpaired rnums specifications.
+    Bonds are formed in the specified graph as required.
+
+    The dictionary of rnums specifications is changed in-place.
+
+    :param atom_rnums: A dictionary of rnums for the specified atom index,
+                       mapping of an integer representing the rnum index
+                       to a float, representing the associated bond order
+    :type atom_rnum: Rnum
+    :param atom_index: The index of the atom associated with :param:`atom_rnum`.
+    :type atom_index: int
+    :param rnums: A dictionary of unpaired rnum specifications,
+                  mapping each rnum to a tuple of the index of the atom
+                  where the rnum first occurred, and the specified bond order.
+    :param graph: The graph to form bonds on
+    :type graph: nx.Graph
+    :raises ParserError: If a pair of rnums is found, both explicitly state
+                         the bond order, and those orders are mismatched;
+                         a pair of rnums attempts to join two already bonded atoms;
+                         or a pair of rnums attempts to join an atom to itself.
+    """
+    for rnum_index, bond_order in atom_rnums.items():
+        if rnum_index in rnums:
+            other_atom_index, other_bond_order = rnums[rnum_index]
+
+            # Cannot bond atom to itself
+            if atom_index == other_atom_index:
+                raise ParserError("Cannot bond atom to itself using rnum")
+            # Cannot already bond atoms again
+            if graph.has_edge(atom_index, other_atom_index):
+                raise ParserError("Atoms already bonded before rnum")
+
+            # Aim to store bond order in variable 'bond_order'
+            if bond_order is not None and other_bond_order is not None:
+                if bond_order != other_bond_order:
+                    raise ParserError(
+                        f"Explicit bond orders for rnum {rnum_index} do not match: "
+                        f"{bond_order} and {other_bond_order}"
+                    )
+            elif bond_order is None and other_bond_order is not None:
+                bond_order = other_bond_order
+            elif bond_order is None and other_bond_order is None:
+                # Imply bond order from atom types
+                if (
+                    graph.nodes[atom_index]["aromatic"]
+                    and graph.nodes[other_atom_index]["aromatic"]
+                ):
+                    bond_order = 1.5
+                else:
+                    bond_order = 1
+
+            graph.add_edge(atom_index, other_atom_index, **new_bond(order=bond_order))
+            del rnums[rnum_index]
+        else:
+            rnums[rnum_index] = bond_order
+
+
+def new_atom(**attrs: AtomBondAttribute) -> Atom:
     """
     Create new atom attributes dictionary from default atom attributes template.
 
@@ -114,7 +208,7 @@ def new_atom(**attrs) -> Atom:
     return atom
 
 
-def new_bond(**attrs) -> Bond:
+def new_bond(**attrs: AtomBondAttribute) -> Bond:
     """
     Create new bond attributes dictionary from default bond attributes template.
 
@@ -494,9 +588,26 @@ def parse_atom(stream: Stream[str]) -> Atom:
 
 
 @catch_stop_iteration
+def parse_rnum(stream: Stream[str]) -> int:
+    """
+    Parses an rnum specification from the specified stream.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :return: The parsed rnum
+    :rtype: int
+    """
+    if stream.peek() in string.digits:
+        return int(parse_digit(stream))
+    else:
+        expect(stream, "%", "percentage sign for rnum")
+        return int("".join(parse_digit(stream) for _ in range(2)))
+
+
+@catch_stop_iteration
 def parse_chain(
     stream: Stream[str], prev_is_aromatic: bool = False
-) -> Tuple[List[Atom], List[Bond]]:
+) -> Tuple[List[Tuple[Atom, AtomRnums]], List[Bond]]:
     """
     Parses a chain from the specified stream.
 
@@ -507,38 +618,52 @@ def parse_chain(
     :param stream: The stream to read from
     :type stream: Stream[str]
     :param prev_is_aromatic: Whether the atom preceding this chain
-                                is aromatic or not. Defaults to :data:`False`.
+                             is aromatic or not. Defaults to :data:`False`.
     :rtype: bool
-    :return: A tuple of a list of atoms and list of bonds between them,
-                in parse order. The number of atoms and bonds are equal.
+    :return: A 2-tuple, with the first element list of tuple of atoms
+             and a corresponding dictionary of rnums for that atom.
+             The second is a list of bonds, in the same order
+             as the atoms.
+             The number of atoms is always one more than the number of bonds,
+             where rnums about the atom preceding the start of the chain
+             is stored in the first element of the atoms list
     :rtype: Tuple[List[Atom], List[Bond]]
     """
-    atoms = [{"aromatic": prev_is_aromatic}]
+    atoms = [({"aromatic": prev_is_aromatic}, defaultdict(lambda: {}))]
     bonds = []
     while True:
-        # Determine bond order
+        # Bond
         try:
             bond = parse_bond(stream)
         except ParserError:
             bond = None
-        try:
-            atom = parse_atom(stream)
-        except ParserError:
-            break
-        if bond is None:
-            if atom["aromatic"] and atoms[-1]["aromatic"]:
-                bond = new_bond(order=1.5)
-            else:
-                bond = new_bond(order=1)
-        atoms.append(atom)
-        bonds.append(bond)
+        if stream.peek() in string.digits + "%":
+            # Rnums
+            rnum = parse_rnum(stream)
+            # The rnum is associated with the most recently parsed atom
+            atoms[-1][1][rnum] = bond
+        else:
+            # Atoms
+            try:
+                atom = parse_atom(stream)
+            except ParserError:
+                break
+            if bond is None:
+                if atom["aromatic"] and atoms[-1][0]["aromatic"]:
+                    bond = new_bond(order=1.5)
+                else:
+                    bond = new_bond(order=1)
+            atoms.append((atom, defaultdict(lambda: {})))
+            bonds.append(bond)
     if not bonds:
         raise new_exception("Expected atom", stream)
     return atoms[1:], bonds
 
 
 @catch_stop_iteration
-def parse_line(stream: Stream[str], graph: nx.Graph, atom_idx: int) -> int:
+def parse_line(
+    stream: Stream[str], graph: nx.Graph, atom_idx: int, rnums: Rnums
+) -> int:
     """
     Parses a line from the specified stream, and extends the specified graph
     with the new line.
@@ -552,6 +677,8 @@ def parse_line(stream: Stream[str], graph: nx.Graph, atom_idx: int) -> int:
     :type graph: nx.Graph
     :param atom_idx: The atom index to initially number new nodes from
     :type atom_idx: int
+    :param rnums: A dictionary storing unpaired rnums
+    :type rnums: Rnums
     :raises ParserError: If no atom for the start of the line is found
     :return: The next atom index for the next node after this line
     """
@@ -560,12 +687,18 @@ def parse_line(stream: Stream[str], graph: nx.Graph, atom_idx: int) -> int:
     atom_idx += 1
     while True:
         try:
-            chain = parse_chain(stream, graph.nodes[atom_idx - 1]["aromatic"])
+            atoms, bonds = parse_chain(stream, graph.nodes[atom_idx - 1]["aromatic"])
         except ParserError:
             break
-        for atom, bond in zip(*chain):
+        _, first_atom_rnums = atoms.pop(0)
+
+        resolve_rnums(first_atom_rnums, atom_idx - 1, rnums, graph)
+
+        for (atom, atom_rnums), bond in zip(atoms, bonds):
             graph.add_node(atom_idx, **atom)
             graph.add_edge(atom_idx - 1, atom_idx, **bond)
+
+            resolve_rnums(atom_rnums, atom_idx, rnums, graph)
             atom_idx += 1
     return atom_idx
 
@@ -593,34 +726,6 @@ def get_remainder(stream: Stream[str]) -> str:
     return "".join(stream)
 
 
-def fill_hydrogens(graph: nx.Graph) -> str:
-    """
-    Fills the hcount attribute for atoms where it is :data:`None`
-    (implies the atom is organic subset).
-
-    :param graph: The graph to fill hydrogens for.
-    :type graph: nx.Graph
-    """
-    for atom_index, attrs in graph.nodes(data=True):
-        if attrs["hcount"] is None:
-            element = attrs["element"]
-            # Get all "normal" valences for the current atom
-            element_valences = VALENCES[element]
-            if element_valences is None:
-                continue
-            current_valence = atom_valence(atom_index, graph)
-            # Possible valences must be at least the current valence of the atom
-            possible_valencies = list(
-                filter(lambda x: x >= current_valence, element_valences)
-            )
-            if not possible_valencies:
-                # Hydrogen count is 0 if current valence
-                # is already higher than any known valence
-                graph.nodes[atom_index]["hcount"] = 0
-            target_valence = min(possible_valencies)
-            graph.nodes[atom_index]["hcount"] = target_valence - current_valence
-
-
 def parse(smiles: str) -> Tuple[nx.Graph, str]:
     """
     Parse the specified SMILES string to produce a graph representation.
@@ -634,9 +739,10 @@ def parse(smiles: str) -> Tuple[nx.Graph, str]:
     stream = Stream(smiles)
     graph = nx.Graph()
     atom_idx = 0
+    rnums = {}
 
     # Syntax parsing + on-the-fly semantics
-    parse_line(stream, graph, atom_idx)
+    parse_line(stream, graph, atom_idx, rnums)
     parse_terminator(stream)
 
     # Post-parsing semantics

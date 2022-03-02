@@ -3,7 +3,7 @@
 """
 tests.parser.test_terminators
 
-Tests the parsing of bond symbols
+Tests the parsing of SMILES string terminators
 """
 
 from pydepict.parser import parse_terminator

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 """
-tests.parser.test_elements
+tests.parser.test_organic
 
-Tests the parsing of element symbols
+Tests the parsing of organic subset symbols
 """
 
 import pytest

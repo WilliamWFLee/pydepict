@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-tests.parser.test_hydrogens
+tests.parser.test_hcount
 
 Tests the parsing of hydrogen counts
 """

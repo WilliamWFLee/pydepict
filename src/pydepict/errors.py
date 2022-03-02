@@ -7,6 +7,9 @@ Custom error classes
 """
 
 
+from typing import Optional
+
+
 class ParserStateException(Exception):
     """
     Error class used when a parser operation is used
@@ -21,16 +24,19 @@ class ParserError(Exception):
     Error class for all errors that occur when parsing input
     """
 
-    def __init__(self, msg: str, position: int) -> None:
+    def __init__(self, msg: str, position: Optional[int] = None) -> None:
         """
         Initialises an instance of a parser exception
 
         :param msg: The error message
         :type msg: str
-        :param position: The position within the stream at which the error occurred
-        :type position: int
+        :param position: The position within the stream at which the error occurred,
+                         or :data:`None` if not applicable. Defaults to :data:`None`
+        :type position: Optional[int]
         """
-        super().__init__(f"{msg}, position {position}")
+        super().__init__(
+            msg + (f", position {position}" if position is not None else "")
+        )
         self.msg = msg
         self.position = position
 

@@ -86,6 +86,11 @@ def invalid_digit(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
+@pytest.fixture(scope="package", params=range(0, 100, 2))
+def valid_double_digits(request: pytest.FixtureRequest) -> str:
+    return f"{request.param:0>2}"
+
+
 # Numbers
 @pytest.fixture(
     scope="package",

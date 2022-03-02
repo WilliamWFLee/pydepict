@@ -70,6 +70,9 @@ DEFAULT_BOND = {"order": 1}
 
 # TYPE CONSTANTS
 
-AtomBondAttribute = Union[bool, str, int, float]
-Atom = Bond = Dict[str, Optional[AtomBondAttribute]]
+AtomBondAttribute = Optional[Union[bool, str, int, float]]
+Atom = Bond = Dict[str, AtomBondAttribute]
 Chain = Tuple[List[Atom], List[Bond]]
+Rnum = Tuple[int, Optional[float]]
+Rnums = Dict[int, Rnum]
+AtomRnums = Dict[int, Optional[float]]
