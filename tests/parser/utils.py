@@ -72,7 +72,9 @@ def patch_parse_method(
     except TypeError:
         pass
     else:
-        side_effect = list(side_effect) + [ParserError("", -1)]
+        side_effect = list(side_effect) + [
+            ParserError("Exceeded expected number of calls")
+        ]
     mock = mocker.patch.object(parser, meth.__name__)
     mock.return_value = return_value
     mock.side_effect = side_effect

@@ -10,7 +10,7 @@ import pytest
 import pytest_mock
 
 from pydepict.errors import ParserError, ParserWarning
-from pydepict.parser import parse_charge, parse_digit
+from pydepict.parser import Stream, parse_charge, parse_digit
 
 from .utils import apply_stream_parse_method, patch_parse_method
 
@@ -20,18 +20,26 @@ CHARGE_TEMPLATE = "{:+}"
 
 
 @pytest.fixture
-def charge(valid_charge: int, mocker: pytest_mock.MockerFixture) -> int:
-    patch_parse_method(
-        mocker, parse_digit, side_effect=(digit for digit in str(abs(valid_charge)))
-    )
+def charge_stream(valid_charge: int) -> Stream[str]:
+    return Stream(CHARGE_TEMPLATE.format(valid_charge))
+
+
+@pytest.fixture
+def charge(
+    valid_charge: int, charge_stream: Stream[str], mocker: pytest_mock.MockerFixture
+) -> int:
+    def side_effect(arg):
+        return next(charge_stream)
+
+    patch_parse_method(mocker, parse_digit, side_effect=side_effect)
     return valid_charge
 
 
-def test_valid_charge(charge: int):
+def test_valid_charge(charge_stream: int, charge: int):
     """
     Tests valid explicit charges, e.g. [*+2]
     """
-    result = apply_stream_parse_method(parse_charge, CHARGE_TEMPLATE.format(charge))
+    result = apply_stream_parse_method(parse_charge, charge_stream)
     assert result == charge
 
 

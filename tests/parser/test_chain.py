@@ -94,7 +94,7 @@ def prev_aromatic(request: pytest.FixtureRequest) -> bool:
                 {"order": 2},
                 {"order": 1},
             ],
-        ),
+        ),  #
     ],
 )
 def chain(
@@ -135,5 +135,10 @@ def chain(
 
 def test_valid_chain(chain: Chain, prev_aromatic: bool):
     atoms, bonds = apply_stream_parse_method(parse_chain, "a", prev_aromatic)
-    assert [atom for atom, _ in atoms] == chain[0]
+    assert [atom for atom, _ in atoms[1:]] == chain[0]
     assert bonds == chain[1]
+
+
+def test_valid_dot_bond_chain():
+    # TODO: Implement
+    pass

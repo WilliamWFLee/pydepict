@@ -37,7 +37,7 @@ def find_expected_bond_order(
     scope="module",
     params=[
         (  # Forms single-bond ring
-            {1: None},
+            [(1, None)],
             3,
             {1: (0, None)},
             (
@@ -46,7 +46,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # No ring formed, first occurrence of rnum
-            {1: None},
+            [(1, None)],
             3,
             {},
             (
@@ -55,7 +55,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # Forms ring with one double bond, specified on current atom
-            {1: 2},
+            [(1, 2)],
             3,
             {1: (0, None)},
             (
@@ -64,7 +64,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # Forms ring with one double bond, specified on previous atom
-            {1: None},
+            [(1, None)],
             3,
             {1: (0, 2)},
             (
@@ -73,7 +73,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # Forms a ring, with one left over
-            {1: None, 2: None},
+            [(1, None), (2, None)],
             3,
             {1: (0, None)},
             (
@@ -82,7 +82,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # Forms an aromatic ring
-            {1: None},
+            [(1, None)],
             3,
             {1: (0, None)},
             (
@@ -96,7 +96,7 @@ def find_expected_bond_order(
             ),
         ),
         (  # Explicit single bond between aromatic atoms
-            {1: None},
+            [(1, None)],
             11,
             {1: (0, None)},
             (
@@ -155,7 +155,7 @@ def test_valid_rnum_spec(valid_rnum_data: RnumData, valid_graph: nx.Graph):
     rnums_copy = rnums.copy()
     resolve_rnums(atom_rnums, atom_index, rnums_copy, valid_graph)
 
-    for rnum_index, bond_order in atom_rnums.items():
+    for rnum_index, bond_order in atom_rnums:
         if rnum_index in rnums:
             # Paired rnum
             other_atom_index, other_bond_order = rnums[rnum_index]
@@ -174,4 +174,4 @@ def test_valid_rnum_spec(valid_rnum_data: RnumData, valid_graph: nx.Graph):
         else:
             # Unpaired rnum
             assert rnum_index in rnums_copy
-            assert rnums_copy[rnum_index] == bond_order
+            assert rnums_copy[rnum_index] == (atom_index, bond_order)

@@ -8,7 +8,6 @@ Parsing for strings conforming to the OpenSMILES specification
 
 import string
 import warnings
-from collections import defaultdict
 from functools import wraps
 from typing import (
     Callable,
@@ -157,8 +156,9 @@ def resolve_rnums(
                          a pair of rnums attempts to join two already bonded atoms;
                          or a pair of rnums attempts to join an atom to itself.
     """
-    for rnum_index, bond_order in atom_rnums.items():
+    for rnum_index, bond_order in atom_rnums:
         if rnum_index in rnums:
+            # Rnum index already encountered
             other_atom_index, other_bond_order = rnums[rnum_index]
 
             # Cannot bond atom to itself
@@ -190,7 +190,8 @@ def resolve_rnums(
             graph.add_edge(atom_index, other_atom_index, **new_bond(order=bond_order))
             del rnums[rnum_index]
         else:
-            rnums[rnum_index] = bond_order
+            # Rnum index not encountered
+            rnums[rnum_index] = (atom_index, bond_order)
 
 
 def new_atom(**attrs: AtomBondAttribute) -> Atom:
@@ -408,9 +409,9 @@ def parse_hcount(stream: Stream[str]) -> int:
     :rtype: int
     """
     expect(stream, ("H",), "'H'")
-    try:
+    if stream.peek("a") in string.digits:
         count = int(parse_digit(stream))
-    except ParserError:
+    else:
         count = 1
 
     return count
@@ -427,7 +428,7 @@ def parse_charge(stream: Stream[str]) -> int:
     :rtype: int
     """
     sign = expect(stream, CHARGE_SYMBOLS, "charge sign")
-    if stream.peek(None) == sign:
+    if stream.peek("") == sign:
         next(stream)
         warnings.warn(
             new_exception(
@@ -437,14 +438,14 @@ def parse_charge(stream: Stream[str]) -> int:
             )
         )
         return int(sign + "2")
-    try:
-        first_digit = parse_digit(stream)
-    except ParserError:
+    if stream.peek("a") not in string.digits:
         return int(sign + "1")
-    try:
-        second_digit = parse_digit(stream)
-    except ParserError:
+
+    first_digit = parse_digit(stream)
+    if stream.peek("a") not in string.digits:
         return int(sign + first_digit)
+
+    second_digit = parse_digit(stream)
     return int(sign + first_digit + second_digit)
 
 
@@ -460,10 +461,9 @@ def parse_class(stream: Stream[str]) -> int:
     :rtype: int
     """
     expect(stream, ":", "colon for atom class")
-    try:
-        return parse_number(stream)
-    except ParserError:
+    if not stream.peek() in string.digits:
         raise new_exception("Expected number for atom class", stream) from None
+    return parse_number(stream)
 
 
 @catch_stop_iteration
@@ -482,20 +482,20 @@ def parse_bracket_atom(stream: Stream[str]) -> Atom:
     attrs = {}
 
     expect(stream, "[", "opening bracket for atom")
-    try:
+    if stream.peek() in string.digits:
         attrs["isotope"] = parse_isotope(stream)
-    except ParserError:
+    else:
         attrs["isotope"] = None
 
     attrs["element"] = parse_element_symbol(stream)
-    for attr, parse_method, default in [
-        ("hcount", parse_hcount, 0),
-        ("charge", parse_charge, 0),
-        ("class", parse_class, None),
+    for attr, parse_method, expected_peeks, default in [
+        ("hcount", parse_hcount, "H", 0),
+        ("charge", parse_charge, CHARGE_SYMBOLS, 0),
+        ("class", parse_class, ":", None),
     ]:
-        try:
+        if stream.peek() in expected_peeks:
             attrs[attr] = parse_method(stream)
-        except ParserError:
+        else:
             attrs[attr] = default
 
     expect(stream, "]", "closing bracket for atom")
@@ -564,20 +564,12 @@ def parse_atom(stream: Stream[str]) -> Atom:
 
     if stream.peek() == "[":
         # Bracket atom
-        try:
-            attrs = parse_bracket_atom(stream)
-        except ParserError:
-            raise new_exception("Expected atom", stream) from None
-        else:
-            atom.update(**attrs)
+        attrs = parse_bracket_atom(stream)
+        atom.update(**attrs)
     else:
         # Organic subset symbol
-        try:
-            element = parse_organic_symbol(stream)
-        except ParserError:
-            raise new_exception("Expected atom", stream) from None
-        else:
-            atom["element"] = element
+        element = parse_organic_symbol(stream)
+        atom["element"] = element
 
     # Deal with aromatic atoms
     if atom["element"].islower():
@@ -629,35 +621,44 @@ def parse_chain(
              is stored in the first element of the atoms list
     :rtype: Tuple[List[Atom], List[Bond]]
     """
-    atoms = [({"aromatic": prev_is_aromatic}, defaultdict(lambda: {}))]
+    atoms = [({"aromatic": prev_is_aromatic}, [])]
     bonds = []
     while True:
-        # Bond
-        try:
-            bond = parse_bond(stream)
-        except ParserError:
+        rnum = None
+        dot = False
+        if stream.peek("") == ".":
+            # Dot bond
+            next(stream)
+            dot = True
             bond = None
-        if stream.peek() in string.digits + "%":
+        else:
+            # Other bonds
+            try:
+                bond = parse_bond(stream)
+            except ParserError:
+                bond = None
+        # Rnums invalid after dot bond
+        if not dot and stream.peek("a") in string.digits + "%":
             # Rnums
             rnum = parse_rnum(stream)
             # The rnum is associated with the most recently parsed atom
-            atoms[-1][1][rnum] = bond
-        else:
+            atoms[-1][1].append((rnum, bond))
+        if rnum is None:
             # Atoms
             try:
                 atom = parse_atom(stream)
             except ParserError:
                 break
-            if bond is None:
+            if not dot and bond is None:
                 if atom["aromatic"] and atoms[-1][0]["aromatic"]:
                     bond = new_bond(order=1.5)
                 else:
                     bond = new_bond(order=1)
-            atoms.append((atom, defaultdict(lambda: {})))
+            atoms.append((atom, []))
             bonds.append(bond)
-    if not bonds:
-        raise new_exception("Expected atom", stream)
-    return atoms[1:], bonds
+    if len(bonds) > len(atoms) + 1:
+        raise new_exception("Expected atom or rnum")
+    return atoms, bonds
 
 
 @catch_stop_iteration
@@ -686,17 +687,25 @@ def parse_line(
     graph.add_node(atom_idx, **parse_atom(stream))
     atom_idx += 1
     while True:
-        try:
+        peek = stream.peek(None)
+        if peek is not None and (
+            peek in ("[", "%", ".")
+            or peek in BOND_TO_ORDER
+            or peek in string.digits
+            or peek in ORGANIC_SYMBOL_FIRST_CHARS
+        ):
             atoms, bonds = parse_chain(stream, graph.nodes[atom_idx - 1]["aromatic"])
-        except ParserError:
+        else:
             break
+
         _, first_atom_rnums = atoms.pop(0)
 
         resolve_rnums(first_atom_rnums, atom_idx - 1, rnums, graph)
 
         for (atom, atom_rnums), bond in zip(atoms, bonds):
             graph.add_node(atom_idx, **atom)
-            graph.add_edge(atom_idx - 1, atom_idx, **bond)
+            if bond is not None:
+                graph.add_edge(atom_idx - 1, atom_idx, **bond)
 
             resolve_rnums(atom_rnums, atom_idx, rnums, graph)
             atom_idx += 1
