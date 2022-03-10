@@ -10,7 +10,6 @@ import string
 import warnings
 from functools import wraps
 from typing import (
-    Callable,
     Generic,
     Iterable,
     List,
@@ -40,6 +39,7 @@ from .consts import (
     Atom,
     AtomRnums,
     Bond,
+    Rnum,
     Rnums,
 )
 from .errors import ParserError, ParserWarning
@@ -130,11 +130,33 @@ def fill_hydrogens(graph: nx.Graph) -> str:
             graph.nodes[atom_index]["hcount"] = target_valence - current_valence
 
 
+def infer_bond(atom_aromatic: bool, other_atom_aromatic: bool) -> Bond:
+    """
+    Returns the inferred bond in the absence of any bond symbol
+    based on the relevant atoms.
+
+    Aromatic bond is inferred between two aromatic atoms,
+    otherwise single bond is inferred.
+
+    :param atom_aromatic: The aromaticity of one of the atoms
+    :type atom_aromatic: bool
+    :param other_atom_aromatic: The aromaticity of the other atom
+    :type other_atom_aromatic: bool
+    :return: A new bond attribute dictionary
+    :rtype: Bond
+    """
+    return new_bond(order=1.5 if atom_aromatic and other_atom_aromatic else 1)
+
+
 def resolve_rnums(
-    atom_rnums: AtomRnums, atom_index: int, rnums: Rnums, graph: nx.Graph
+    atom_rnums: AtomRnums,
+    atom_index: int,
+    rnums: Rnums,
+    graph: nx.Graph,
+    stream: Stream,
 ):
     """
-    Resolves a dictionary of rnum specifications for the specified atom,
+    Resolves a ordered list of rnum specifications for the specified atom,
     using the specified dictionary of unpaired rnums specifications.
     Bonds are formed in the specified graph as required.
 
@@ -163,10 +185,10 @@ def resolve_rnums(
 
             # Cannot bond atom to itself
             if atom_index == other_atom_index:
-                raise ParserError("Cannot bond atom to itself using rnum")
+                raise new_exception("Cannot bond atom to itself using rnum", stream)
             # Cannot already bond atoms again
             if graph.has_edge(atom_index, other_atom_index):
-                raise ParserError("Atoms already bonded before rnum")
+                raise new_exception("Atoms already bonded", stream)
 
             # Aim to store bond order in variable 'bond_order'
             if bond_order is not None and other_bond_order is not None:
@@ -224,7 +246,7 @@ def new_bond(**attrs: AtomBondAttribute) -> Bond:
     return bond
 
 
-def catch_stop_iteration(func: Callable[..., T]) -> Callable[..., T]:
+def catch_stop_iteration(func):
     """
     Decorator for methods that throw :class:`StopIteration`.
     Wraps the method such that the exception is caught, and :class:`ParserError`
@@ -271,7 +293,7 @@ def expect(
 ) -> Union[str, object]:
     """
     Expect the next string in the specified stream to be any character
-    from the specified list :param:`symbols`, otherwise raise :class:`ParserError`.
+    from the specified iterable :param:`symbols`, otherwise raise :class:`ParserError`.
 
     If end-of-stream is reached, then return :param:`default` if specified,
     or raise :class:`ParserError`.
@@ -650,21 +672,54 @@ def parse_chain(
             except ParserError:
                 break
             if not dot and bond is None:
-                if atom["aromatic"] and atoms[-1][0]["aromatic"]:
-                    bond = new_bond(order=1.5)
-                else:
-                    bond = new_bond(order=1)
+                bond = infer_bond(atom["aromatic"], atoms[-1][0]["aromatic"])
             atoms.append((atom, []))
             bonds.append(bond)
-    if len(bonds) > len(atoms) + 1:
+    if len(bonds) > len(atoms) + 1 or not bonds:
         raise new_exception("Expected atom or rnum")
     return atoms, bonds
 
 
 @catch_stop_iteration
+def parse_branch(
+    stream: Stream[str], graph: nx.Graph, prev_atom_idx: int, atom_idx: int, rnums: Rnum
+):
+    expect(stream, "(", "opening parenthesis for branch")
+    while True:
+        bond = None
+        dot = False
+        if stream.peek() in BOND_TO_ORDER:
+            # Bond
+            bond = parse_bond(stream)
+        elif stream.peek() == ".":
+            # Dot
+            next(stream)
+            dot = True
+
+        # Line
+        try:
+            first_atom_idx, atom_idx = parse_line(stream, graph, atom_idx, rnums)
+        except ParserError:
+            break
+
+        # Bond previous atom to first atom in line
+        if not dot:
+            if bond is None:
+                bond = infer_bond(
+                    graph.nodes[first_atom_idx]["aromatic"],
+                    graph.nodes[prev_atom_idx]["aromatic"],
+                )
+            graph.add_edge(first_atom_idx, prev_atom_idx, **bond)
+        prev_atom_idx = atom_idx - 1
+
+    expect(stream, ")", "closing parenthesis for branch")
+    return atom_idx
+
+
+@catch_stop_iteration
 def parse_line(
     stream: Stream[str], graph: nx.Graph, atom_idx: int, rnums: Rnums
-) -> int:
+) -> Tuple[int, int]:
     """
     Parses a line from the specified stream, and extends the specified graph
     with the new line.
@@ -681,35 +736,45 @@ def parse_line(
     :param rnums: A dictionary storing unpaired rnums
     :type rnums: Rnums
     :raises ParserError: If no atom for the start of the line is found
-    :return: The next atom index for the next node after this line
+    :return: A tuple of the index for the first atom in the line,
+             and the new value for the atom index counter
+    :rtype: Tuple[int, int]
     """
 
     graph.add_node(atom_idx, **parse_atom(stream))
+    first_atom_idx = last_chain_atom_idx = atom_idx
     atom_idx += 1
     while True:
         peek = stream.peek(None)
-        if peek is not None and (
+        if peek is None:
+            break
+        if (
             peek in ("[", "%", ".")
             or peek in BOND_TO_ORDER
             or peek in string.digits
             or peek in ORGANIC_SYMBOL_FIRST_CHARS
         ):
+            # Chain
             atoms, bonds = parse_chain(stream, graph.nodes[atom_idx - 1]["aromatic"])
+            _, first_atom_rnums = atoms.pop(0)
+
+            resolve_rnums(first_atom_rnums, atom_idx - 1, rnums, graph, stream)
+
+            for (atom, atom_rnums), bond in zip(atoms, bonds):
+                graph.add_node(atom_idx, **atom)
+                if bond is not None:
+                    graph.add_edge(last_chain_atom_idx, atom_idx, **bond)
+
+                resolve_rnums(atom_rnums, atom_idx, rnums, graph, stream)
+                last_chain_atom_idx = atom_idx
+                atom_idx += 1
+        elif peek == "(":
+            # Branch
+            atom_idx = parse_branch(stream, graph, last_chain_atom_idx, atom_idx, rnums)
         else:
             break
 
-        _, first_atom_rnums = atoms.pop(0)
-
-        resolve_rnums(first_atom_rnums, atom_idx - 1, rnums, graph)
-
-        for (atom, atom_rnums), bond in zip(atoms, bonds):
-            graph.add_node(atom_idx, **atom)
-            if bond is not None:
-                graph.add_edge(atom_idx - 1, atom_idx, **bond)
-
-            resolve_rnums(atom_rnums, atom_idx, rnums, graph)
-            atom_idx += 1
-    return atom_idx
+    return first_atom_idx, atom_idx
 
 
 def parse_terminator(stream: Stream[str]):
@@ -756,5 +821,8 @@ def parse(smiles: str) -> Tuple[nx.Graph, str]:
 
     # Post-parsing semantics
     fill_hydrogens(graph)
+    if rnums:
+        # Rnums must be matched
+        raise ParserError("Unmatched rnums: " + ", ".join(str(rnum) for rnum in rnums))
 
     return graph, get_remainder(stream)
