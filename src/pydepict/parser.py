@@ -9,16 +9,7 @@ Parsing for strings conforming to the OpenSMILES specification
 import string
 import warnings
 from functools import wraps
-from typing import (
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union
 
 import networkx as nx
 
