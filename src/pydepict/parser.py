@@ -4,6 +4,8 @@
 pydepict.parser
 
 Parsing for strings conforming to the OpenSMILES specification
+
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
 import string
@@ -13,12 +15,12 @@ from typing import Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Unio
 
 import networkx as nx
 
-from pydepict.consts import AtomBondAttribute
-from pydepict.utils import atom_valence
-
 from .consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
+    CHIRALITY_CODES,
+    CHIRALITY_CODES_FIRST_CHARS,
+    CHIRALITY_RANGES,
     DEFAULT_ATOM,
     DEFAULT_BOND,
     ELEMENT_SYMBOL_FIRST_CHARS,
@@ -28,12 +30,15 @@ from .consts import (
     TERMINATORS,
     VALENCES,
     Atom,
+    AtomAttribute,
     AtomRnums,
     Bond,
+    BondAttribute,
     Rnum,
     Rnums,
 )
 from .errors import ParserError, ParserWarning
+from .utils import atom_valence, is_allene_center
 
 __all__ = ["Stream", "parse"]
 
@@ -93,7 +98,7 @@ class Stream(Generic[T]):
         return self._peek
 
 
-def fill_hydrogens(graph: nx.Graph) -> str:
+def fill_hydrogens(graph: nx.Graph):
     """
     Fills the hcount attribute for atoms where it is :data:`None`
     (implies the atom is organic subset).
@@ -101,9 +106,9 @@ def fill_hydrogens(graph: nx.Graph) -> str:
     :param graph: The graph to fill hydrogens for.
     :type graph: nx.Graph
     """
-    for atom_index, attrs in graph.nodes(data=True):
-        if attrs["hcount"] is None:
-            element = attrs["element"]
+    for atom_index, hcount in graph.nodes(data="hcount"):
+        if hcount is None:
+            element = hcount["element"]
             # Get all "normal" valences for the current atom
             element_valences = VALENCES[element]
             if element_valences is None:
@@ -119,6 +124,24 @@ def fill_hydrogens(graph: nx.Graph) -> str:
                 graph.nodes[atom_index]["hcount"] = 0
             target_valence = min(possible_valencies)
             graph.nodes[atom_index]["hcount"] = target_valence - current_valence
+
+
+def imply_shorthand_chirality(graph: nx.Graph):
+    """
+    Implies the chirality type for atoms in the specified graph
+    where there is shorthand chirality specification, i.e. @ or @@
+
+    Shorthand chirality is implied whenever the chirality code is :data:`None`
+
+    :param graph: The graph to scan for shorthand chirality
+    :type graph: nx.Graph
+    """
+
+    for atom_index, chirality in graph.nodes(data="chirality"):
+        if chirality is not None and chirality[0] is None:
+            graph.nodes[atom_index]["chirality"] = (
+                "AL" if is_allene_center(atom_index, graph) else "TH"
+            )
 
 
 def infer_bond(atom_aromatic: bool, other_atom_aromatic: bool) -> Bond:
@@ -207,7 +230,7 @@ def resolve_rnums(
             rnums[rnum_index] = (atom_index, bond_order)
 
 
-def new_atom(**attrs: AtomBondAttribute) -> Atom:
+def new_atom(**attrs: AtomAttribute) -> Atom:
     """
     Create new atom attributes dictionary from default atom attributes template.
 
@@ -222,7 +245,7 @@ def new_atom(**attrs: AtomBondAttribute) -> Atom:
     return atom
 
 
-def new_bond(**attrs: AtomBondAttribute) -> Bond:
+def new_bond(**attrs: BondAttribute) -> Bond:
     """
     Create new bond attributes dictionary from default bond attributes template.
 
@@ -411,6 +434,61 @@ def parse_digit(stream: Stream[str]) -> str:
 
 
 @catch_stop_iteration
+def parse_chiral(stream: Stream[str]) -> Tuple[Optional[str], int]:
+    """
+    Parses an atomic chirality specification from the specified stream.
+
+    The code is the name given to the two-character alphabetic sequence
+    specifying the type of chirality, and the index is the name given
+    to the one- or two-digit number that follows the code.
+
+    If shorthand chirality, i.e. @ or @@, is used, the code returned is :data:`None`,
+    leaving the code to be determined semantically.
+
+    :param stream: The stream to read from
+    :type stream: Stream[str]
+    :raises ParserError: If the next symbol in the stream is not '@'
+    :return: The chirality specification as a tuple of chirality code and index,
+             e.g. ("TH", 1)
+    :rtype: Tuple[Optional[str], int]
+    """
+    expect(stream, "@", "'@'")
+    peek = stream.peek("X")
+
+    if peek == "@":
+        # @@
+        next(stream)
+        return None, 2
+    if peek not in CHIRALITY_CODES_FIRST_CHARS:
+        # @
+        return None, 1
+
+    # Code, i.e. TB, AL, SP, TB, OH
+    code = next(stream)
+    code += stream.peek("")
+    if code not in CHIRALITY_CODES:
+        raise new_exception(f"Unknown chirality code {code!r}", stream)
+    next(stream)
+
+    # Index
+    if stream.peek("a") not in string.digits:
+        # Must be at least one digit
+        raise new_exception("Expected digit", stream)
+    index = parse_digit(stream)
+    if stream.peek("a") in string.digits:
+        # Parse second digit
+        index += parse_digit(stream)
+    index = int(index)
+
+    if index <= 0 or index > CHIRALITY_RANGES[code]:
+        raise new_exception(
+            f"Invalid chirality {code}{index}: {index} is out of range", stream
+        )
+
+    return code, index
+
+
+@catch_stop_iteration
 def parse_hcount(stream: Stream[str]) -> int:
     """
     Parses hydrogen count from the specified stream
@@ -421,7 +499,7 @@ def parse_hcount(stream: Stream[str]) -> int:
     :return: The hydrogen count
     :rtype: int
     """
-    expect(stream, ("H",), "'H'")
+    expect(stream, "H", "'H'")
     if stream.peek("a") in string.digits:
         count = int(parse_digit(stream))
     else:
@@ -502,6 +580,7 @@ def parse_bracket_atom(stream: Stream[str]) -> Atom:
 
     attrs["element"] = parse_element_symbol(stream)
     for attr, parse_method, expected_peeks, default in [
+        ("chirality", parse_chiral, "@", None),
         ("hcount", parse_hcount, "H", 0),
         ("charge", parse_charge, CHARGE_SYMBOLS, 0),
         ("class", parse_class, ":", None),
@@ -524,8 +603,8 @@ def parse_organic_symbol(stream: Stream[str]) -> str:
     :param stream: The stream to read from
     :type stream: Stream[str]
     :raises ParserError: If the element symbol is not a known element,
-                            not a valid element symbol, or is a valid element symbol
-                            that cannot be used in an organic context
+                         not a valid element symbol, or is a valid element symbol
+                         that cannot be used in an organic context
     :return: The element parsed
     :rtype: str
     """
@@ -579,10 +658,12 @@ def parse_atom(stream: Stream[str]) -> Atom:
         # Bracket atom
         attrs = parse_bracket_atom(stream)
         atom.update(**attrs)
-    else:
+    elif stream.peek() in ORGANIC_SYMBOL_FIRST_CHARS:
         # Organic subset symbol
         element = parse_organic_symbol(stream)
         atom["element"] = element
+    else:
+        raise new_exception("Expected atom", stream)
 
     # Deal with aromatic atoms
     if atom["element"].islower():
@@ -658,16 +739,15 @@ def parse_chain(
             atoms[-1][1].append((rnum, bond))
         if rnum is None:
             # Atoms
-            try:
-                atom = parse_atom(stream)
-            except ParserError:
+            if not stream.peek() in {"["} | ORGANIC_SYMBOL_FIRST_CHARS:
                 break
+            atom = parse_atom(stream)
             if not dot and bond is None:
                 bond = infer_bond(atom["aromatic"], atoms[-1][0]["aromatic"])
             atoms.append((atom, []))
             bonds.append(bond)
     if len(bonds) > len(atoms) + 1 or not bonds:
-        raise new_exception("Expected atom or rnum")
+        raise new_exception("Expected atom or rnum", stream)
     return atoms, bonds
 
 
@@ -811,9 +891,13 @@ def parse(smiles: str) -> Tuple[nx.Graph, str]:
     parse_terminator(stream)
 
     # Post-parsing semantics
+
+    # Fill implied hydrogens for organic atoms
     fill_hydrogens(graph)
     if rnums:
         # Rnums must be matched
         raise ParserError("Unmatched rnums: " + ", ".join(str(rnum) for rnum in rnums))
+    # Determine whether shorthand chirality is tetrahedral or allenal
+    imply_shorthand_chirality(graph)
 
     return graph, get_remainder(stream)

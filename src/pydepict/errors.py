@@ -4,6 +4,8 @@
 pydepict.errors
 
 Custom error classes
+
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
 
