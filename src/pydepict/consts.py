@@ -84,6 +84,11 @@ DEFAULT_ATOM = {
 }
 DEFAULT_BOND = {"order": 1}
 
+# RENDERER COLORS
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
 # TYPE CONSTANTS
 
 ChiralSpec = Optional[Tuple[Optional[str], int]]
