@@ -38,7 +38,7 @@ from .consts import (
     Rnums,
 )
 from .errors import ParserError, ParserWarning
-from .utils import atom_valence, is_allene_center
+from .utils import atom_valence, is_allenal_center
 
 __all__ = ["Stream", "parse"]
 
@@ -140,7 +140,7 @@ def imply_shorthand_chirality(graph: nx.Graph):
     for atom_index, chirality in graph.nodes(data="chirality"):
         if chirality is not None and chirality[0] is None:
             graph.nodes[atom_index]["chirality"] = (
-                "AL" if is_allene_center(atom_index, graph) else "TH"
+                "AL" if is_allenal_center(atom_index, graph) else "TH"
             )
 
 

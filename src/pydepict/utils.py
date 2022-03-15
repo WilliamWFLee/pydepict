@@ -37,7 +37,7 @@ def atom_valence(atom_index: int, graph: nx.Graph) -> int:
     )
 
 
-def is_allene_center(atom_index: int, graph: nx.Graph) -> bool:
+def is_allenal_center(atom_index: int, graph: nx.Graph) -> bool:
     """
     Determines whether or not the atom at the specified index
     within the specified graph is the carbon at the center of an allene.
