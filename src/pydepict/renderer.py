@@ -53,6 +53,7 @@ class Renderer:
     def __init__(self, graph: Optional[nx.Graph] = None):
         self._display_lock = RLock()
         self.graph = graph
+        self._thread = None
 
     def _with_display_lock(meth):
         """
@@ -136,25 +137,33 @@ class Renderer:
         for atom_index in self._graph.nodes:
             # Skip if element is carbon
             element = self._graph.nodes[atom_index]["element"]
-            if element == "C":
-                continue
+            # if element == "C":
+            #     continue
             # Render text from font
             text = self._font.render(element, True, BLACK)
-            # Blit text onto white background with margin
+            # Calculate size of smallest square around text
+            square_width = max(text.get_width(), text.get_height())
+            # Create text surface for text margin
+            margined_text_width = square_width + TEXT_MARGIN * 2
             margined_text = pygame.Surface(
+                2 * (margined_text_width,), flags=pygame.SRCALPHA
+            )
+            # Add a circular margin to the text
+            circle_radius = margined_text_width / 2
+            pygame.draw.circle(
+                margined_text, WHITE, center=2 * (circle_radius,), radius=circle_radius
+            )
+            # Blit text onto margined text surface
+            margined_text.blit(
+                text,
                 (
-                    text.get_width() + TEXT_MARGIN * 2,
-                    text.get_height() + TEXT_MARGIN * 2,
+                    (margined_text_width - text.get_width()) / 2,
+                    (margined_text_width - text.get_height()) / 2,
                 ),
             )
-            margined_text.fill(WHITE)
-            margined_text.blit(text, (TEXT_MARGIN, TEXT_MARGIN))
             # Blit margined text onto canvas, anchored at the center of the text
             x, y = get_display_coords(atom_index, self._graph)
-            coords = (
-                x - text.get_width() / 2 - TEXT_MARGIN,
-                y - text.get_height() / 2 - TEXT_MARGIN,
-            )
+            coords = (x - circle_radius, y - circle_radius)
             self._display.blit(margined_text, coords)
 
     @_with_display_lock
@@ -200,8 +209,8 @@ class Renderer:
         self._init()
         if blocking:
             self._loop()
-        t = Thread(target=self._loop, daemon=True)
-        t.start()
+        self._thread = Thread(target=self._loop, daemon=True)
+        self._thread.start()
 
     def close(self):
         """
@@ -209,3 +218,5 @@ class Renderer:
         """
         # pygame quits when the current event loop iteration is completed
         self._running = False
+        if self._thread is not None:
+            self._thread.join()
