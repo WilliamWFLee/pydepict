@@ -13,7 +13,7 @@ import pytest
 import pytest_mock
 
 from pydepict import parser
-from pydepict.consts import Atom, AtomBondAttribute
+from pydepict.consts import Atom, AtomAttribute
 from pydepict.parser import Stream, parse_atom
 from tests.parser.utils import apply_stream_parse_method, patch_parse_method
 
@@ -92,7 +92,7 @@ def atom(
 
         return inner
 
-    def length(attr: str, value: AtomBondAttribute):
+    def length(attr: str, value: AtomAttribute):
         if attr == "element_symbol":
             return len(value)
         if attr == "isotope":
