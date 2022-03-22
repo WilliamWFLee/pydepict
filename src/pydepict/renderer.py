@@ -9,6 +9,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 from functools import wraps
+from math import sqrt
 from threading import RLock, Thread
 from typing import Optional
 
@@ -25,6 +26,7 @@ from .consts import (
     WHITE,
 )
 from .utils import (
+    Coords,
     average_depicted_bond_length,
     get_depict_coords,
     get_display_coords,
@@ -109,9 +111,11 @@ class Renderer:
                 set_display_coords(
                     atom_index,
                     self._graph,
-                    tuple(
-                        v * scale_factor + FRAME_MARGIN
-                        for v in get_depict_coords(atom_index, self._graph)
+                    Coords(
+                        *(
+                            v * scale_factor + FRAME_MARGIN
+                            for v in get_depict_coords(atom_index, self._graph)
+                        )
                     ),
                 )
 
@@ -129,58 +133,64 @@ class Renderer:
         """
         Returns whether to render the atom with the given index
         """
-        element = self._graph.nodes[atom_index]["element"]
-        if element == "C":
-            return False
+        # element = self._graph.nodes[atom_index]["element"]
+        # if element == "C":
+        #     return False
         return True
 
     @_with_display_lock
-    def _render_bond(self, u: int, v: int):
-        coords1 = get_display_coords(u, self._graph)
-        coords2 = get_display_coords(v, self._graph)
-
-        pygame.draw.line(self._display, BLACK, coords1, coords2, LINE_WIDTH)
+    def _render_atom(self, atom_index: int):
+        if self._display_atom(atom_index):
+            # Skip rendering if atom should not be displayed
+            element = self._graph.nodes[atom_index]["element"]
+            # Render text from font
+            text = self._font.render(element, True, BLACK)
+            # Blit text onto canvas, anchored at the center of the text
+            x, y = get_display_coords(atom_index, self._graph)
+            coords = (x - text.get_width() / 2, y - text.get_height() / 2)
+            self._display.blit(text, coords)
+            # Store radius of rendered text
+            self._graph.nodes[atom_index]["dr"] = (
+                sqrt(text.get_width() ** 2 + text.get_height() ** 2) / 2 + TEXT_MARGIN
+            )
+        else:
+            # Set atom display radius to 0
+            self._graph.nodes[atom_index]["dr"] = 0
 
     @_with_display_lock
-    def _render_atom(self, atom_index: int):
-        # Skip if atom should not be displayed
-        if not self._display_atom(atom_index):
-            return
-        element = self._graph.nodes[atom_index]["element"]
-        # Render text from font
-        text = self._font.render(element, True, BLACK)
-        # Calculate size of smallest square around text
-        square_width = max(text.get_width(), text.get_height())
-        # Create text surface for text margin
-        margined_text_width = square_width + TEXT_MARGIN * 2
-        margined_text = pygame.Surface(
-            2 * (margined_text_width,), flags=pygame.SRCALPHA
+    def _render_bond(self, u: int, v: int):
+        # Coordinates for bond endpoints
+        coords1 = get_display_coords(u, self._graph)
+        coords2 = get_display_coords(v, self._graph)
+        # Retrieve rendered radius for atoms, including margin
+        atom_radius1 = self._graph.nodes[u]["dr"]
+        atom_radius2 = self._graph.nodes[v]["dr"]
+        # Sort coordinates such that coords1 -> coords2 is left-to-right
+        if coords2 < coords1:
+            coords1, coords2 = coords2, coords1
+        # Get vector between bond endpoints
+        line_vector = Coords(coords2.x - coords1.x, coords2.y - coords1.y)
+        # Calculate length of bond vector
+        line_vector_length = sqrt(line_vector.x**2 + line_vector.y**2)
+        line_end1 = Coords(
+            coords1.x + line_vector.x * atom_radius1 / line_vector_length,
+            coords1.y + line_vector.y * atom_radius1 / line_vector_length,
         )
-        # Add a circular margin to the text
-        circle_radius = margined_text_width / 2
-        pygame.draw.circle(
-            margined_text, WHITE, center=2 * (circle_radius,), radius=circle_radius
+        line_end2 = Coords(
+            coords2.x - line_vector.x * atom_radius2 / line_vector_length,
+            coords2.y - line_vector.y * atom_radius2 / line_vector_length,
         )
-        # Blit text onto margined text surface
-        margined_text.blit(
-            text,
-            (
-                (margined_text_width - text.get_width()) / 2,
-                (margined_text_width - text.get_height()) / 2,
-            ),
-        )
-        # Blit margined text onto canvas, anchored at the center of the text
-        x, y = get_display_coords(atom_index, self._graph)
-        coords = (x - circle_radius, y - circle_radius)
-        self._display.blit(margined_text, coords)
+
+        pygame.draw.line(self._display, BLACK, line_end1, line_end2, LINE_WIDTH)
 
     @_with_display_lock
     def _render(self):
+        # Draw on display
         self._display.fill(WHITE)
-        for u, v in self._graph.edges:
-            self._render_bond(u, v)
         for atom_index in self._graph.nodes:
             self._render_atom(atom_index)
+        for u, v in self._graph.edges:
+            self._render_bond(u, v)
         pygame.display.update()
 
     def _handle_events(self):

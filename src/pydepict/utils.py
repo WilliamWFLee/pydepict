@@ -9,9 +9,14 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 from math import sqrt
-from typing import Tuple
+from typing import NamedTuple
 
 import networkx as nx
+
+
+class Coords(NamedTuple):
+    x: float
+    y: float
 
 
 def bond_order_sum(atom_index: int, graph: nx.Graph) -> int:
@@ -112,7 +117,7 @@ def average_depicted_bond_length(graph: nx.Graph) -> float:
     return total_distance / len(graph.edges)
 
 
-def get_depict_coords(atom_index: int, graph: nx.Graph) -> Tuple[float, float]:
+def get_depict_coords(atom_index: int, graph: nx.Graph) -> Coords:
     """
     Gets depiction coordinates for the atom with the specified index
     in the specified graph.
@@ -122,16 +127,15 @@ def get_depict_coords(atom_index: int, graph: nx.Graph) -> Tuple[float, float]:
     :param graph: The graph to look for the atom in
     :type atom_index: int
     :return: The depiction coordinates for the specified atom
-    :rtype: Tuple[float, float]
+    :rtype: Coords
     """
-
     x = graph.nodes[atom_index]["x"]
     y = graph.nodes[atom_index]["y"]
 
-    return x, y
+    return Coords(x, y)
 
 
-def get_display_coords(atom_index: int, graph: nx.Graph) -> Tuple[float, float]:
+def get_display_coords(atom_index: int, graph: nx.Graph) -> Coords:
     """
     Gets display coordinates for the atom with the specified index
     in the specified graph.
@@ -141,18 +145,15 @@ def get_display_coords(atom_index: int, graph: nx.Graph) -> Tuple[float, float]:
     :param graph: The graph to look for the atom in
     :type atom_index: int
     :return: The display coordinates for the specified atom
-    :rtype: Tuple[float, float]
+    :rtype: Coords
     """
-
     x = graph.nodes[atom_index]["dx"]
     y = graph.nodes[atom_index]["dy"]
 
-    return x, y
+    return Coords(x, y)
 
 
-def set_display_coords(
-    atom_index: int, graph: nx.Graph, coords: Tuple[float, float]
-) -> None:
+def set_display_coords(atom_index: int, graph: nx.Graph, coords: Coords) -> None:
     """
     Sets display coordinates for the atom with the specified index
     in the specified graph.
@@ -162,9 +163,7 @@ def set_display_coords(
     :param graph: The graph to look for the atom in
     :type atom_index: int
     :param coords: The display coordinates to set for the specified atom
-    :type coords: Tuple[float, float]
+    :type coords: Coords
     """
-
-    x, y = coords
-    graph.nodes[atom_index]["dx"] = x
-    graph.nodes[atom_index]["dy"] = y
+    graph.nodes[atom_index]["dx"] = coords.x
+    graph.nodes[atom_index]["dy"] = coords.y
