@@ -136,9 +136,9 @@ class Renderer:
         """
         Returns whether to render the atom with the given index
         """
-        # element = self._graph.nodes[atom_index]["element"]
-        # if element == "C":
-        #     return False
+        element = self._graph.nodes[atom_index]["element"]
+        if element == "C":
+            return False
         return True
 
     @_with_display_lock
@@ -180,11 +180,11 @@ class Renderer:
         atom1_margin_vector = line_vector.scale_to(atom_radius1)
         atom2_margin_vector = line_vector.scale_to(atom_radius2)
         # Calculate ends of bond line
-        line_end1 = coords1 + atom1_margin_vector
-        line_end2 = coords2 - atom2_margin_vector
+        line_end1 = (coords1 + atom1_margin_vector).floor()
+        line_end2 = (coords2 - atom2_margin_vector).floor()
 
         for i in range(bond_order):
-            offset_magnitude = i / (bond_order - 1) - 1 / 2
+            offset_magnitude = (i / (bond_order - 1) - 1 / 2) if bond_order > 1 else 0
             offset = line_vector_normal.scale_to(offset_magnitude * BOND_WIDTH)
             _aaline(
                 self._display,
@@ -273,6 +273,6 @@ def _aaline(
     for _ in range(width):
         offset_vector = line_vector_normal.scale_to(offset_magnitude)
         pygame.draw.aaline(
-            surface, color, start_pos + offset_vector, end_pos + offset_vector, False
+            surface, color, start_pos + offset_vector, end_pos + offset_vector
         )
         offset_magnitude += 1

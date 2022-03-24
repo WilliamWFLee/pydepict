@@ -46,6 +46,15 @@ class Vector(NamedTuple):
             return self.__class__(self.x * scale_factor, self.y * scale_factor)
         return NotImplemented
 
+    def floor(self) -> "Vector":
+        """
+        Truncates the two components of the vector.
+
+        :return: The new vector with components truncated.
+        :rtype: Vector
+        """
+        return Vector(int(self.x), int(self.y))
+
     def __add__(self, other: "Vector") -> "Vector":
         """
         Returns the sum of two vectors
