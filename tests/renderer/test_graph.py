@@ -30,12 +30,12 @@ def graph2():
     g = nx.Graph()
     g.add_node(0, element="C", x=0, y=0)
     g.add_node(1, element="C", x=-1, y=1)
-    g.add_edge(0, 1)
+    g.add_edge(0, 1, order=1)
 
     return g
 
 
-def test_renderer(graph1: nx.Graph):
+def test_blocking_renderer(graph1: nx.Graph):
     renderer = Renderer(graph1)
     renderer.show()
 
