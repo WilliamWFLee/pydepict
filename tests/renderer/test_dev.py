@@ -18,7 +18,7 @@ def graph1():
     g = nx.Graph()
     g.add_node(0, element="C", x=0, y=0)
     g.add_node(1, element="C", x=1, y=1)
-    g.add_edge(0, 1)
+    g.add_edge(0, 1, order=4)
 
     return g
 

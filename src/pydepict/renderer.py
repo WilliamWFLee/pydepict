@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 from functools import wraps
 from math import sqrt
 from threading import RLock, Thread
-from typing import Optional
+from typing import Optional, Tuple
 
 import networkx as nx
 import pygame
@@ -19,14 +19,16 @@ import pygame
 from .consts import (
     BLACK,
     DISPLAY_BOND_LENGTH,
+    FONT_FAMILY,
     FONT_SIZE,
     FRAME_MARGIN,
+    BOND_WIDTH,
     LINE_WIDTH,
     TEXT_MARGIN,
     WHITE,
 )
 from .utils import (
-    Coords,
+    Vector,
     average_depicted_bond_length,
     get_depict_coords,
     get_display_coords,
@@ -87,6 +89,7 @@ class Renderer:
     def graph(self, graph: Optional[nx.Graph]):
         self._graph = None if graph is None else graph.copy()
         self._calculate_geometry()
+        self._redraw = True
 
     def _calculate_geometry(self):
         # Calculates display coordinates for atoms in the graph,
@@ -111,7 +114,7 @@ class Renderer:
                 set_display_coords(
                     atom_index,
                     self._graph,
-                    Coords(
+                    Vector(
                         *(
                             v * scale_factor + FRAME_MARGIN
                             for v in get_depict_coords(atom_index, self._graph)
@@ -147,11 +150,12 @@ class Renderer:
             text = self._font.render(element, True, BLACK)
             # Blit text onto canvas, anchored at the center of the text
             x, y = get_display_coords(atom_index, self._graph)
-            coords = (x - text.get_width() / 2, y - text.get_height() / 2)
+            coords = (x - text.get_width() / 2, y - self._font.get_ascent() / 2)
             self._display.blit(text, coords)
             # Store radius of rendered text
             self._graph.nodes[atom_index]["dr"] = (
-                sqrt(text.get_width() ** 2 + text.get_height() ** 2) / 2 + TEXT_MARGIN
+                sqrt(text.get_width() ** 2 + self._font.get_height() ** 2) / 2
+                + TEXT_MARGIN
             )
         else:
             # Set atom display radius to 0
@@ -159,6 +163,7 @@ class Renderer:
 
     @_with_display_lock
     def _render_bond(self, u: int, v: int):
+        bond_order = self._graph.edges[u, v]["order"]
         # Coordinates for bond endpoints
         coords1 = get_display_coords(u, self._graph)
         coords2 = get_display_coords(v, self._graph)
@@ -168,30 +173,38 @@ class Renderer:
         # Sort coordinates such that coords1 -> coords2 is left-to-right
         if coords2 < coords1:
             coords1, coords2 = coords2, coords1
-        # Get vector between bond endpoints
-        line_vector = Coords(coords2.x - coords1.x, coords2.y - coords1.y)
+        # Get vector between bond endpoints, and its normal
+        line_vector = coords2 - coords1
+        line_vector_normal = line_vector.normal()
         # Calculate length of bond vector
-        line_vector_length = sqrt(line_vector.x**2 + line_vector.y**2)
-        line_end1 = Coords(
-            coords1.x + line_vector.x * atom_radius1 / line_vector_length,
-            coords1.y + line_vector.y * atom_radius1 / line_vector_length,
-        )
-        line_end2 = Coords(
-            coords2.x - line_vector.x * atom_radius2 / line_vector_length,
-            coords2.y - line_vector.y * atom_radius2 / line_vector_length,
-        )
+        atom1_margin_vector = line_vector.scale_to(atom_radius1)
+        atom2_margin_vector = line_vector.scale_to(atom_radius2)
+        # Calculate ends of bond line
+        line_end1 = coords1 + atom1_margin_vector
+        line_end2 = coords2 - atom2_margin_vector
 
-        pygame.draw.line(self._display, BLACK, line_end1, line_end2, LINE_WIDTH)
+        for i in range(bond_order):
+            offset_magnitude = i / (bond_order - 1) - 1 / 2
+            offset = line_vector_normal.scale_to(offset_magnitude * BOND_WIDTH)
+            _aaline(
+                self._display,
+                BLACK,
+                line_end1 + offset,
+                line_end2 + offset,
+                width=LINE_WIDTH,
+            )
 
     @_with_display_lock
     def _render(self):
-        # Draw on display
-        self._display.fill(WHITE)
-        for atom_index in self._graph.nodes:
-            self._render_atom(atom_index)
-        for u, v in self._graph.edges:
-            self._render_bond(u, v)
-        pygame.display.update()
+        if self._redraw:
+            # Draw on display
+            self._display.fill(WHITE)
+            for atom_index in self._graph.nodes:
+                self._render_atom(atom_index)
+            for u, v in self._graph.edges:
+                self._render_bond(u, v)
+            pygame.display.update()
+            self._redraw = False
 
     def _handle_events(self):
         for event in pygame.event.get():
@@ -203,7 +216,7 @@ class Renderer:
         pygame.init()
         self._calculate_geometry()
         self._running = True
-        self._font = pygame.font.SysFont(pygame.font.get_default_font(), size=FONT_SIZE)
+        self._font = pygame.font.SysFont(FONT_FAMILY, size=FONT_SIZE)
 
     def _loop(self):
         while self._running:
@@ -240,3 +253,26 @@ class Renderer:
         self._running = False
         if self._thread is not None:
             self._thread.join()
+
+
+def _aaline(
+    surface: pygame.Surface,
+    color,
+    start_pos: Tuple[float, float],
+    end_pos: Tuple[float, float],
+    width: int = 1,
+):
+    """
+    Render a thick antialiased line
+    """
+    start_pos = Vector.from_tuple(start_pos)
+    end_pos = Vector.from_tuple(end_pos)
+    line_vector = end_pos - start_pos
+    line_vector_normal = line_vector.normal()
+    offset_magnitude = -width / 2
+    for _ in range(width):
+        offset_vector = line_vector_normal.scale_to(offset_magnitude)
+        pygame.draw.aaline(
+            surface, color, start_pos + offset_vector, end_pos + offset_vector, False
+        )
+        offset_magnitude += 1
