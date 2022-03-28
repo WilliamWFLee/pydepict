@@ -49,15 +49,25 @@ class Renderer:
     and then the molecule is rendered.
 
     .. attribute:: graph
+
         Instance of a molecular graph to be rendered by the renderer,
         or :data:`None` for no graph.
 
         :type: Optional[nx.Graph]
+
+    .. attribute:: redraw
+
+        Whether or not the diagram should be redrawn on the next event loop iteration.
+        Set this to :data:`true` whenever any of the depiction coordinates
+        in :attr:`graph` are changed, but you do not set :attr:`graph` itself.
+
+        :type: bool
     """
 
     def __init__(self, graph: Optional[nx.Graph] = None):
         self._display_lock = RLock()
         self.graph = graph
+        self.redraw = False
         self._thread = None
 
     def _with_display_lock(meth):
@@ -80,17 +90,17 @@ class Renderer:
         The molecular graph rendered by this renderer instance.
 
         Setting this property changes the diagram displayed by the renderer.
-        The graph is copied using :meth:`nx.Graph.copy`
-        to avoid changing the original graph
+        The input graph is amended *in-place* by the renderer
+        to determine the display coordinates of each atom.
         """
         return self._graph
 
     @graph.setter
     @_with_display_lock
     def graph(self, graph: Optional[nx.Graph]):
-        self._graph = None if graph is None else graph.copy()
+        self._graph = graph
         self._calculate_geometry()
-        self._redraw = True
+        self.redraw = True
 
     def _calculate_geometry(self):
         # Calculates display coordinates for atoms in the graph,
@@ -198,7 +208,7 @@ class Renderer:
 
     @_with_display_lock
     def _render(self):
-        if self._redraw:
+        if self.redraw:
             # Draw on display
             self._display.fill(WHITE)
             for atom_index in self._graph.nodes:
@@ -206,7 +216,7 @@ class Renderer:
             for u, v in self._graph.edges:
                 self._render_bond(u, v)
             pygame.display.update()
-            self._redraw = False
+            self.redraw = False
 
     def _handle_events(self):
         for event in pygame.event.get():
