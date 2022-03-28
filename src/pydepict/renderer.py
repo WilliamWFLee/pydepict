@@ -18,14 +18,15 @@ import pygame
 
 from .consts import (
     BLACK,
+    BOND_WIDTH,
     DISPLAY_BOND_LENGTH,
     FONT_FAMILY,
     FONT_SIZE,
     FRAME_MARGIN,
-    BOND_WIDTH,
     LINE_WIDTH,
     TEXT_MARGIN,
     WHITE,
+    WINDOW_TITLE,
 )
 from .utils import (
     Vector,
@@ -131,6 +132,7 @@ class Renderer:
             self._display = pygame.display.set_mode(
                 (max_dx + FRAME_MARGIN, max_dy + FRAME_MARGIN)
             )
+            pygame.display.set_caption(WINDOW_TITLE)
 
     def _display_atom(self, atom_index: int) -> bool:
         """
