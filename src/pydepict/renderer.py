@@ -66,8 +66,8 @@ class Renderer:
 
     def __init__(self, graph: Optional[nx.Graph] = None):
         self._display_lock = RLock()
+        self.redraw = False  # XXX: Must be before setting graph
         self.graph = graph
-        self.redraw = False
         self._thread = None
 
     def _with_display_lock(meth):
@@ -112,6 +112,10 @@ class Renderer:
                 scale_factor = DISPLAY_BOND_LENGTH / average_bond_length
             else:
                 scale_factor = 1
+
+            # Invert y-coordinate as graphics origin is in top-left hand corner
+            for atom_index in self.graph.nodes:
+                self._graph.nodes[atom_index]["y"] *= -1
 
             # Normalises depiction coordinates to be non-negative
             min_x = min((n[1] for n in self._graph.nodes(data="x")), default=0)
