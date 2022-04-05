@@ -36,7 +36,7 @@ from .utils import (
     set_display_coords,
 )
 
-__all__ = ["Renderer"]
+__all__ = ["Renderer", "render"]
 
 
 class Renderer:
