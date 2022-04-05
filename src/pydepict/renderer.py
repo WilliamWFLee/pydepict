@@ -271,6 +271,22 @@ class Renderer:
             self._thread.join()
 
 
+def render(graph: nx.Graph, blocking: bool = False):
+    """
+    Shortcut for using :class:`Renderer`. Equivalent to::
+        renderer = Renderer(graph)
+        renderer.show(blocking)
+
+    :param graph: The graph to render
+    :type graph: nx.Graph
+    :param blocking: Whether the renderer blocks the current thread,
+                     defaults to :data:`False`
+    :type blocking: bool
+    """
+    renderer = Renderer(graph)
+    renderer.show(blocking)
+
+
 def _aaline(
     surface: pygame.Surface,
     color,
