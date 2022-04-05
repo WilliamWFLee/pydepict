@@ -8,68 +8,14 @@ Utility functions
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+from collections import defaultdict
 from math import sqrt
-from typing import NamedTuple, Tuple
+from typing import List
 
 import networkx as nx
 
-
-class Vector(NamedTuple):
-    x: float
-    y: float
-
-    @classmethod
-    def from_tuple(cls, coords: Tuple[float, float]) -> "Vector":
-        return Vector(coords[0], coords[1])
-
-    def normal(self) -> "Vector":
-        """
-        Calculates the normal to this vector.
-
-        :return: The normal
-        :rtype: Vector
-        """
-        return self.__class__(self.y, -self.x)
-
-    def scale_to(self, magnitude: float) -> "Vector":
-        """
-        Scales this vector to the specified magnitude, and returns the new vector.
-
-        :param magnitude: The magnitude to scale to
-        :type magnitude: float
-        :return: The scaled vector
-        :rtype: Vector
-        """
-        if isinstance(magnitude, (float, int)):
-            curr_magnitude = sqrt(self.x**2 + self.y**2)
-            scale_factor = magnitude / curr_magnitude
-            return self.__class__(self.x * scale_factor, self.y * scale_factor)
-        return NotImplemented
-
-    def floor(self) -> "Vector":
-        """
-        Truncates the two components of the vector.
-
-        :return: The new vector with components truncated.
-        :rtype: Vector
-        """
-        return Vector(int(self.x), int(self.y))
-
-    def __add__(self, other: "Vector") -> "Vector":
-        """
-        Returns the sum of two vectors
-        """
-        if isinstance(other, self.__class__):
-            return Vector(self.x + other.x, self.y + other.y)
-        return NotImplemented
-
-    def __sub__(self, other: "Vector") -> "Vector":
-        """
-        Returns the difference of two vectors
-        """
-        if isinstance(other, self.__class__):
-            return Vector(self.x - other.x, self.y - other.y)
-        return NotImplemented
+from .consts import ATOM_PATTERNS, AtomPattern
+from .models import Vector
 
 
 def bond_order_sum(atom_index: int, graph: nx.Graph) -> int:
@@ -214,7 +160,7 @@ def set_display_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None
     :param atom_index: The index of the atom to set coordinates for.
     :type atom_index: int
     :param graph: The graph to look for the atom in
-    :type atom_index: int
+    :type graph: nx.Graph
     :param coords: The display coordinates to set for the specified atom
     :type coords: Vector
     """
