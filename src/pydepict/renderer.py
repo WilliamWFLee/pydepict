@@ -32,8 +32,8 @@ from .utils import (
     Vector,
     average_depicted_bond_length,
     get_depict_coords,
-    get_display_coords,
-    set_display_coords,
+    get_render_coords,
+    set_render_coords,
 )
 
 __all__ = ["Renderer", "render"]
@@ -115,18 +115,18 @@ class Renderer:
 
             # Invert y-coordinate as graphics origin is in top-left hand corner
             for atom_index in self.graph.nodes:
-                self._graph.nodes[atom_index]["y"] *= -1
+                self._graph.nodes[atom_index]["dy"] *= -1
 
             # Normalises depiction coordinates to be non-negative
-            min_x = min((n[1] for n in self._graph.nodes(data="x")), default=0)
-            min_y = min((n[1] for n in self._graph.nodes(data="y")), default=0)
+            min_dx = min((n[1] for n in self._graph.nodes(data="dx")), default=0)
+            min_dy = min((n[1] for n in self._graph.nodes(data="dy")), default=0)
             for atom_index in self._graph.nodes:
-                self._graph.nodes[atom_index]["x"] -= min_x
-                self._graph.nodes[atom_index]["y"] -= min_y
+                self._graph.nodes[atom_index]["dx"] -= min_dx
+                self._graph.nodes[atom_index]["dy"] -= min_dy
 
             # Calculates display coordinates, adding margin
             for atom_index in self._graph.nodes:
-                set_display_coords(
+                set_render_coords(
                     atom_index,
                     self._graph,
                     Vector(
@@ -138,13 +138,13 @@ class Renderer:
                 )
 
             # Calculates display size
-            max_dx = max((n[1] for n in self._graph.nodes(data="dx")), default=0)
-            max_dy = max((n[1] for n in self._graph.nodes(data="dy")), default=0)
+            max_rx = max((n[1] for n in self._graph.nodes(data="rx")), default=0)
+            max_ry = max((n[1] for n in self._graph.nodes(data="ry")), default=0)
         else:
-            max_dx = max_dy = 0
+            max_rx = max_rx = 0
         with self._display_lock:
             self._display = pygame.display.set_mode(
-                (max_dx + FRAME_MARGIN, max_dy + FRAME_MARGIN)
+                (max_rx + FRAME_MARGIN, max_ry + FRAME_MARGIN)
             )
             pygame.display.set_caption(WINDOW_TITLE)
 
@@ -165,7 +165,7 @@ class Renderer:
             # Render text from font
             text = self._font.render(element, True, BLACK)
             # Blit text onto canvas, anchored at the center of the text
-            x, y = get_display_coords(atom_index, self._graph)
+            x, y = get_render_coords(atom_index, self._graph)
             coords = (x - text.get_width() / 2, y - self._font.get_ascent() / 2)
             self._display.blit(text, coords)
             # Store radius of rendered text
@@ -181,8 +181,8 @@ class Renderer:
     def _render_bond(self, u: int, v: int):
         bond_order = self._graph.edges[u, v]["order"]
         # Coordinates for bond endpoints
-        coords1 = get_display_coords(u, self._graph)
-        coords2 = get_display_coords(v, self._graph)
+        coords1 = get_render_coords(u, self._graph)
+        coords2 = get_render_coords(v, self._graph)
         # Retrieve rendered radius for atoms, including margin
         atom_radius1 = self._graph.nodes[u]["dr"]
         atom_radius2 = self._graph.nodes[v]["dr"]

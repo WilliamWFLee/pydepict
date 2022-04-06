@@ -8,14 +8,23 @@ Utility functions
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
-from collections import defaultdict
 from math import sqrt
-from typing import List
 
 import networkx as nx
 
-from .consts import ATOM_PATTERNS, AtomPattern
 from .models import Vector
+
+
+__all__ = [
+    "bond_order_sum",
+    "atom_valence",
+    "is_allenal_center",
+    "depicted_distance",
+    "average_depicted_bond_length",
+    "get_depict_coords",
+    "get_render_coords",
+    "set_render_coords",
+]
 
 
 def bond_order_sum(atom_index: int, graph: nx.Graph) -> int:
@@ -92,8 +101,8 @@ def depicted_distance(u: int, v: int, graph: nx.Graph) -> float:
     :return: The distance between the two atoms
     :rtype: float
     """
-    ux, uy = graph.nodes[u]["x"], graph.nodes[u]["y"]
-    vx, vy = graph.nodes[v]["x"], graph.nodes[v]["y"]
+    ux, uy = graph.nodes[u]["dx"], graph.nodes[u]["dy"]
+    vx, vy = graph.nodes[v]["dx"], graph.nodes[v]["dy"]
     return sqrt((vx - ux) ** 2 + (vy - uy) ** 2)
 
 
@@ -128,15 +137,15 @@ def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The depiction coordinates for the specified atom
     :rtype: Vector
     """
-    x = graph.nodes[atom_index]["x"]
-    y = graph.nodes[atom_index]["y"]
+    x = graph.nodes[atom_index]["dx"]
+    y = graph.nodes[atom_index]["dy"]
 
     return Vector(x, y)
 
 
-def get_display_coords(atom_index: int, graph: nx.Graph) -> Vector:
+def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
     """
-    Gets display coordinates for the atom with the specified index
+    Gets render coordinates for the atom with the specified index
     in the specified graph.
 
     :param atom_index: The index of the atom to fetch coordinates for.
@@ -146,23 +155,23 @@ def get_display_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The display coordinates for the specified atom
     :rtype: Vector
     """
-    x = graph.nodes[atom_index]["dx"]
-    y = graph.nodes[atom_index]["dy"]
+    x = graph.nodes[atom_index]["rx"]
+    y = graph.nodes[atom_index]["ry"]
 
     return Vector(x, y)
 
 
-def set_display_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
+def set_render_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
     """
-    Sets display coordinates for the atom with the specified index
+    Sets render coordinates for the atom with the specified index
     in the specified graph.
 
     :param atom_index: The index of the atom to set coordinates for.
     :type atom_index: int
     :param graph: The graph to look for the atom in
     :type graph: nx.Graph
-    :param coords: The display coordinates to set for the specified atom
+    :param coords: The render coordinates to set for the specified atom
     :type coords: Vector
     """
-    graph.nodes[atom_index]["dx"] = coords.x
-    graph.nodes[atom_index]["dy"] = coords.y
+    graph.nodes[atom_index]["rx"] = coords.x
+    graph.nodes[atom_index]["ry"] = coords.y

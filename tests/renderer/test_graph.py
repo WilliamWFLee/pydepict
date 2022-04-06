@@ -16,9 +16,9 @@ from pydepict.renderer import Renderer
 @pytest.fixture
 def graph1():
     g = nx.Graph()
-    g.add_node(0, element="C", x=0, y=0)
-    g.add_node(1, element="C", x=1, y=1)
-    g.add_node(2, element="O", x=2, y=0)
+    g.add_node(0, element="C", dx=0, dy=0)
+    g.add_node(1, element="C", dx=1, dy=1)
+    g.add_node(2, element="O", dx=2, dy=0)
     g.add_edge(0, 1, order=1)
     g.add_edge(1, 2, order=1)
 
@@ -28,8 +28,8 @@ def graph1():
 @pytest.fixture
 def graph2():
     g = nx.Graph()
-    g.add_node(0, element="C", x=0, y=0)
-    g.add_node(1, element="C", x=-1, y=1)
+    g.add_node(0, element="C", dx=0, dy=0)
+    g.add_node(1, element="C", dx=-1, dy=1)
     g.add_edge(0, 1, order=1)
 
     return g
