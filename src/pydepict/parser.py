@@ -739,7 +739,7 @@ def parse_chain(
             atoms[-1][1].append((rnum, bond))
         if rnum is None:
             # Atoms
-            if not stream.peek() in {"["} | ORGANIC_SYMBOL_FIRST_CHARS:
+            if not stream.peek("") in {"["} | ORGANIC_SYMBOL_FIRST_CHARS:
                 break
             atom = parse_atom(stream)
             if not dot and bond is None:
