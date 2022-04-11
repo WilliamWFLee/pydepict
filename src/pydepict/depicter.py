@@ -96,9 +96,11 @@ class Depicter:
         """
         Remove terminal atoms and their adjacent edges from the pruned graph instance.
         """
+        terminals = []
         for atom_index in list(self._pruned_graph.nodes):
             if len(self._pruned_graph[atom_index]) <= 1:
-                self._pruned_graph.remove_node(atom_index)
+                terminals.append(atom_index)
+        self._pruned_graph.remove_nodes_from(terminals)
 
     def _determine_atom_constraints(self) -> None:
         """
