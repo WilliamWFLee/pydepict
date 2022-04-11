@@ -272,7 +272,7 @@ class Renderer:
             self._thread.join()
 
 
-def render(graph: nx.Graph, blocking: bool = False):
+def render(graph: nx.Graph, blocking: bool = True):
     """
     Shortcut for using :class:`Renderer`. Equivalent to::
         renderer = Renderer(graph)
@@ -281,7 +281,7 @@ def render(graph: nx.Graph, blocking: bool = False):
     :param graph: The graph to render
     :type graph: nx.Graph
     :param blocking: Whether the renderer blocks the current thread,
-                     defaults to :data:`False`
+                     defaults to :data:`True`
     :type blocking: bool
     """
     renderer = Renderer(graph)
