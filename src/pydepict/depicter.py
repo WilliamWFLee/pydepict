@@ -24,7 +24,7 @@ from .consts import (
     NeighborSpec,
 )
 from .models import Vector
-from .utils import none_iter
+from .utils import none_iter, set_depict_coords
 
 __all__ = ["Depicter", "depict"]
 
@@ -48,11 +48,6 @@ class _Constraints:
         if u > v:
             return (v, u), True
         return key, False
-
-    def set_atom_constraints(self, constraints: Dict[int, Dict[int, Vector]]):
-        for u, neighbor_constraints in constraints.items():
-            for v, vector in neighbor_constraints.items():
-                self.__setitem__((u, v), vector)
 
     def __contains__(self, key: Tuple[int, int]) -> bool:
         (u, v), _ = self._sort_key(key)
@@ -162,9 +157,31 @@ class Depicter:
                                 atom_constraints_copy[v][1].pop(i - removed)
                                 removed += 1
 
-    def _sample(self):
+    def _calculate_sample_coordinates(self):
+        """
+        Converts constraints to Cartesian coordinates via tree traversal
+        """
+        self._coordinates_samples = [{0: Vector(0, 0)} for _ in range(SAMPLE_SIZE)]
+        for constraints, coordinates_sample in zip(
+            self._samples, self._coordinates_samples
+        ):
+            for u, v in nx.dfs_edges(self.graph, source=0):
+                coordinates_sample[v] = coordinates_sample[u] + constraints[u, v]
+
+    def _sample_constraints(self):
+        """
+        Samples non-conflicting vector constraints
+        """
         self._samples = [_Constraints() for _ in range(SAMPLE_SIZE)]
         self._sample_atom_constraints()
+
+    def _apply_best_sample(self):
+        """
+        Selects the best sample, and applies to the graph
+        """
+        # TODO: Actual best sample implementation
+        for atom_index, vector in self._coordinates_samples[0].items():
+            set_depict_coords(atom_index, self.graph, vector)
 
     def depict(self) -> None:
         """
@@ -179,10 +196,14 @@ class Depicter:
         self._prune_hydrogens()
         self._prune_terminals()
 
-        # Produce list of atom indices
+        # Produce a copy list of atom indices
         self._atoms: List[int] = list(self._pruned_graph.nodes)
+        # Determine and sample constraints
         self._determine_atom_constraints()
-        self._sample()
+        self._sample_constraints()
+        # Convert constraints to Cartesian coordinates
+        self._calculate_sample_coordinates()
+        self._apply_best_sample()
 
         del self._pruned_graph, self._atoms
 
@@ -197,8 +218,7 @@ def _match_atom_pattern(
     for each neighbor spec matches the specified count.
     """
     return pattern.keys() == neighbor_spec_to_count.keys() and all(
-        len(vectors) == count
-        for vectors, count in zip(pattern.values(), neighbor_spec_to_count.values())
+        len(pattern[key]) == neighbor_spec_to_count[key] for key in pattern
     )
 
 

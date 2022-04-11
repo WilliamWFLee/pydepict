@@ -147,6 +147,22 @@ def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:
     return Vector(x, y)
 
 
+def set_depict_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
+    """
+    Sets depiction coordinates for the atom with the specified index
+    in the specified graph.
+
+    :param atom_index: The index of the atom to set coordinates for.
+    :type atom_index: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param coords: The depiction coordinates to set for the specified atom
+    :type coords: Vector
+    """
+    graph.nodes[atom_index]["dx"] = coords.x
+    graph.nodes[atom_index]["dy"] = coords.y
+
+
 def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
     """
     Gets render coordinates for the atom with the specified index
