@@ -23,15 +23,15 @@ Chain = Tuple[List[Atom], List[Bond]]
 Rnum = Tuple[int, Optional[float]]
 Rnums = Dict[int, Rnum]
 AtomRnums = List[Tuple[int, Optional[float]]]
+NeighborSpec = Tuple[Optional[str], Optional[float]]
 AtomPattern = List[
     Tuple[
-        Dict[
-            Tuple[Optional[str], Optional[float]],
-            Tuple[Vector, ...],
-        ],
+        Dict[NeighborSpec, Tuple[Vector, ...]],
         float,
     ]
 ]
+NeighborConstraints = Dict[int, Vector]
+AtomConstraintsCandidates = Tuple[List[NeighborConstraints], List[float]]
 
 # GENERAL CHEMISTRY DATA
 
@@ -389,6 +389,10 @@ for meth in (Vector.x_reflect, Vector.y_reflect):
             for pattern, weight in patterns_copy
         )
 del meth, patterns, patterns_copy
+
+# OTHER DEPICTER CONSTANTS
+
+SAMPLE_SIZE = 100
 
 # RENDERER WINDOW ATTRIBUTES
 

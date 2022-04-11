@@ -8,12 +8,13 @@ Utility functions
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+from itertools import product
 from math import sqrt
+from typing import Iterable, Optional, TypeVar
 
 import networkx as nx
 
 from .models import Vector
-
 
 __all__ = [
     "bond_order_sum",
@@ -24,7 +25,10 @@ __all__ = [
     "get_depict_coords",
     "get_render_coords",
     "set_render_coords",
+    "none_iter",
 ]
+
+T = TypeVar("T")
 
 
 def bond_order_sum(atom_index: int, graph: nx.Graph) -> int:
@@ -175,3 +179,18 @@ def set_render_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
     """
     graph.nodes[atom_index]["rx"] = coords.x
     graph.nodes[atom_index]["ry"] = coords.y
+
+
+def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:
+    """
+    Takes an iterable, and returns an iterable that iterates all possible
+    substitutions of the elements of the iterable with :data:`None`.
+
+    :param iterable: The iterable
+    :type iterable: Iterable[T]
+    :return: The iterable of iterables with all possible substitutions
+    :rtype: Iterable[Iterable[Optional[T]]]
+    """
+    return product(
+        *((value, None) if value is not None else (None,) for value in iterable)
+    )

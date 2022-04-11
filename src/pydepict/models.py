@@ -87,6 +87,20 @@ class Vector(NamedTuple):
             return self.__class__(self.x - other.x, self.y - other.y)
         return NotImplemented
 
+    def __mul__(self, scalar: float) -> "Vector":
+        return Vector(self.x * scalar, self.y * scalar)
+
+    def __rmul__(self, scalar: float) -> "Vector":
+        return self.__mul__(scalar)
+
+    def __neg__(self) -> "Vector":
+        return self.__mul__(-1)
+
+    def __eq__(self, other: "Vector") -> bool:
+        if isinstance(other, self.__class__):
+            return self.x == other.x and self.y == other.y
+        return NotImplemented
+
     def __str__(self):
         return f"({self.x}, {self.y})"
 
