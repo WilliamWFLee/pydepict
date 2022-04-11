@@ -258,8 +258,9 @@ class Renderer:
         self._init()
         if blocking:
             self._loop()
-        self._thread = Thread(target=self._loop, daemon=True)
-        self._thread.start()
+        else:
+            self._thread = Thread(target=self._loop, daemon=True)
+            self._thread.start()
 
     def close(self):
         """
