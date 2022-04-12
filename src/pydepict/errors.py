@@ -49,3 +49,11 @@ class ParserWarning(ParserError, Warning):
     """
 
     pass
+
+
+class DepicterError(Exception):
+    """
+    Class for all depicter-related exceptions
+    """
+
+    pass

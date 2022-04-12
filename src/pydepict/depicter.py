@@ -111,6 +111,10 @@ class Depicter:
         atom_constraints: Dict[int, List[Tuple[NeighborConstraints, float]]] = {}
         for atom_index in self._atoms:
             constraints_list = _find_candidate_atom_constraints(atom_index, self.graph)
+            if not constraints_list:
+                raise DepicterError(
+                    f"No candidate constraints found for atom with index {atom_index}"
+                )
             atom_constraints[atom_index] = constraints_list
 
         # Construct final representation of atom constraints
