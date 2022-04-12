@@ -3,7 +3,7 @@
 """
 pydepict
 
-A library for parsing and display SMILES strings.
+A library for parsing and rendering chemical structures from SMILES strings.
 
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
