@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 from functools import wraps
 from math import sqrt
 from threading import RLock, Thread
-from typing import Optional, Tuple
+from typing import Optional
 
 import networkx as nx
 import pygame
@@ -23,7 +23,6 @@ from .consts import (
     FONT_FAMILY,
     FONT_SIZE,
     FRAME_MARGIN,
-    LINE_WIDTH,
     TEXT_MARGIN,
     WHITE,
     WINDOW_TITLE,
@@ -199,12 +198,8 @@ class Renderer:
         for i in range(bond_order):
             offset_magnitude = (i / (bond_order - 1) - 1 / 2) if bond_order > 1 else 0
             offset = line_vector_normal.scale_to(offset_magnitude * BOND_WIDTH)
-            _aaline(
-                self._display,
-                BLACK,
-                line_end1 + offset,
-                line_end2 + offset,
-                width=LINE_WIDTH,
+            pygame.draw.aaline(
+                self._display, BLACK, line_end1 + offset, line_end2 + offset
             )
 
     @_with_display_lock
@@ -283,26 +278,3 @@ def render(graph: nx.Graph, blocking: bool = True):
     """
     renderer = Renderer(graph)
     renderer.show(blocking)
-
-
-def _aaline(
-    surface: pygame.Surface,
-    color,
-    start_pos: Tuple[float, float],
-    end_pos: Tuple[float, float],
-    width: int = 1,
-):
-    """
-    Render a thick antialiased line
-    """
-    start_pos = Vector.from_tuple(start_pos)
-    end_pos = Vector.from_tuple(end_pos)
-    line_vector = end_pos - start_pos
-    line_vector_normal = line_vector.normal()
-    offset_magnitude = -width / 2
-    for _ in range(width):
-        offset_vector = line_vector_normal.scale_to(offset_magnitude)
-        pygame.draw.aaline(
-            surface, color, start_pos + offset_vector, end_pos + offset_vector
-        )
-        offset_magnitude += 1
