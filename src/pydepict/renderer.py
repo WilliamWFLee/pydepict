@@ -186,9 +186,6 @@ class Renderer:
         # Retrieve rendered radius for atoms, including margin
         atom_radius1 = self._graph.nodes[u]["dr"]
         atom_radius2 = self._graph.nodes[v]["dr"]
-        # Sort coordinates such that coords1 -> coords2 is left-to-right
-        if coords2 < coords1:
-            coords1, coords2 = coords2, coords1
         # Get vector between bond endpoints, and its normal
         line_vector = coords2 - coords1
         line_vector_normal = line_vector.normal()
