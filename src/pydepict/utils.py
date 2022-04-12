@@ -210,3 +210,31 @@ def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:
     return product(
         *((value, None) if value is not None else (None,) for value in iterable)
     )
+
+
+def prune_hydrogens(graph: nx.Graph):
+    """
+    Remove hydrogen atoms and its adjacent edges from the graph.
+
+    :param graph: The graph to remove hydrogens from
+    :type graph: nx.Graph
+    """
+    for atom_index, element in dict(graph.nodes(data="element")).items():
+        if element == "H":
+            graph.remove_node(atom_index)
+
+
+def prune_terminals(graph: nx.Graph):
+    """
+    Remove terminal atoms and its adjacent edges from the graph.
+
+    Terminal atoms are those that are bonded with only one other atom.
+
+    :param graph: The graph to remove terminal atoms from
+    :type graph: nx.Graph
+    """
+    terminals = []
+    for atom_index in list(graph.nodes):
+        if len(graph[atom_index]) <= 1:
+            terminals.append(atom_index)
+    graph.remove_nodes_from(terminals)

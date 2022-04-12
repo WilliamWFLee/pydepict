@@ -17,18 +17,11 @@ import networkx as nx
 
 from pydepict.errors import DepicterError
 
-from .consts import (
-    ATOM_PATTERNS,
-    SAMPLE_SIZE,
-    AtomConstraintsCandidates,
-    AtomPattern,
-    NeighborConstraints,
-    NeighborSpec,
-)
+from .consts import ATOM_PATTERNS, SAMPLE_SIZE, AtomPattern, NeighborSpec
 from .models import Vector
-from .utils import none_iter, set_depict_coords
+from .utils import none_iter, prune_hydrogens, prune_terminals, set_depict_coords
 
-__all__ = ["Depicter", "depict"]
+__all__ = ["depict"]
 
 
 class _Constraints:
@@ -72,156 +65,6 @@ class _Constraints:
         raise KeyError(key)
 
 
-class Depicter:
-    """
-    Depicter class for depicting molecular graphs.
-
-    A depicter takes a graph representation of a chemical structure,
-    and determines the coordinates of each atom in order for the graph
-    to be graphically represented.
-    """
-
-    def __init__(self, graph: nx.Graph) -> None:
-        self.graph = graph
-
-    def _prune_hydrogens(self) -> None:
-        """
-        Remove hydrogens and their adjacent edges from the pruned graph instance.
-        """
-        for atom_index, element in dict(
-            self._pruned_graph.nodes(data="element")
-        ).items():
-            if element == "H":
-                self._pruned_graph.remove_node(atom_index)
-
-    def _prune_terminals(self) -> None:
-        """
-        Remove terminal atoms and their adjacent edges from the pruned graph instance.
-        """
-        terminals = []
-        for atom_index in list(self._pruned_graph.nodes):
-            if len(self._pruned_graph[atom_index]) <= 1:
-                terminals.append(atom_index)
-        self._pruned_graph.remove_nodes_from(terminals)
-
-    def _determine_atom_constraints(self) -> None:
-        """
-        Finds all candidate constraints for atoms, and removes those
-        that cannot be fulfilled if applicable
-        """
-        # Construct immediate representation of atom constraints
-        atom_constraints: Dict[int, List[Tuple[NeighborConstraints, float]]] = {}
-        for atom_index in self._atoms:
-            constraints_list = _find_candidate_atom_constraints(atom_index, self.graph)
-            if not constraints_list:
-                raise DepicterError(
-                    f"No candidate constraints found for atom with index {atom_index}"
-                )
-            atom_constraints[atom_index] = constraints_list
-
-        # Construct final representation of atom constraints
-        self._atom_constraints: Dict[int, AtomConstraintsCandidates] = {
-            atom_index: (
-                [neighbor_constraints for neighbor_constraints, _ in patterns],
-                [weight for _, weight in patterns],
-            )
-            for atom_index, patterns in atom_constraints.items()
-        }
-
-    def _sample_atom_constraints(self):
-        """
-        Adds non-conflicting atom constraints to depiction samples
-        """
-        index = 0
-        while index < SAMPLE_SIZE:
-            constraints = self._samples[index]
-            random.shuffle(self._atoms)
-            atom_constraints_copy = {
-                atom_index: (neighbor_constraints.copy(), weights.copy())
-                for atom_index, (
-                    neighbor_constraints,
-                    weights,
-                ) in self._atom_constraints.items()
-            }
-            for u in self._atoms:
-                # Sample constraint for current atom
-                patterns, weights = atom_constraints_copy[u]
-                # Earlier constraint decision could not be reconciled
-                if not patterns or not weights:
-                    continue
-                (pattern,) = random.choices(patterns, weights)
-                # Delete atom constraints for current atom from constraints copy
-                del atom_constraints_copy[u]
-
-                for v, vector in pattern.items():
-                    # Set vector in graph-wide constraints
-                    constraints[u, v] = vector
-                    # Remove conflicting constraints for other atoms
-                    if v in atom_constraints_copy:
-                        removed = 0
-                        for i, neighbor_constraints in enumerate(
-                            atom_constraints_copy[v][0].copy()
-                        ):
-                            if (
-                                u in neighbor_constraints
-                                and neighbor_constraints[u] != -vector
-                            ):
-                                atom_constraints_copy[v][0].pop(i - removed)
-                                atom_constraints_copy[v][1].pop(i - removed)
-                                removed += 1
-            index += 1
-
-    def _calculate_sample_coordinates(self):
-        """
-        Converts constraints to Cartesian coordinates via tree traversal
-        """
-        self._coordinates_samples = [{0: Vector(0, 0)} for _ in range(SAMPLE_SIZE)]
-        for constraints, coordinates_sample in zip(
-            self._samples, self._coordinates_samples
-        ):
-            for u, v in nx.dfs_edges(self.graph, source=0):
-                coordinates_sample[v] = coordinates_sample[u] + constraints[u, v]
-
-    def _sample_constraints(self):
-        """
-        Samples non-conflicting vector constraints
-        """
-        self._samples = [_Constraints() for _ in range(SAMPLE_SIZE)]
-        self._sample_atom_constraints()
-
-    def _apply_best_sample(self):
-        """
-        Selects the best sample, and applies to the graph
-        """
-        # TODO: Actual best sample implementation
-        for atom_index, vector in self._coordinates_samples[0].items():
-            set_depict_coords(atom_index, self.graph, vector)
-
-    def depict(self) -> None:
-        """
-        Determines depiction coordinates for the graph in this depicter.
-
-        Adds to atom attributes to the graph *in-place*,
-        thus changing the original input graph to include depiction coordinates.
-        """
-        # Makes copy of original molecular graph,
-        # and removes hydrogens and terminal atoms to produce a "pruned" graph.
-        self._pruned_graph = self.graph.copy()
-        self._prune_hydrogens()
-        self._prune_terminals()
-
-        # Produce a copy list of atom indices
-        self._atoms: List[int] = list(self._pruned_graph.nodes)
-        # Determine and sample constraints
-        self._determine_atom_constraints()
-        self._sample_constraints()
-        # Convert constraints to Cartesian coordinates
-        self._calculate_sample_coordinates()
-        self._apply_best_sample()
-
-        del self._pruned_graph, self._atoms
-
-
 def _match_atom_pattern(
     pattern: AtomPattern, neighbor_spec_to_count: Dict[NeighborSpec, int]
 ) -> bool:
@@ -245,9 +88,7 @@ def _find_candidate_atom_constraints(
     for the atom with the specified index in the specified graph.
     """
     # Determines element of atom
-    atom_element = graph.nodes(data="element")[atom_index]
-    # Finds all candidate patterns
-    patterns = ATOM_PATTERNS[atom_element]
+    element = graph.nodes(data="element")[atom_index]
     # Get neighbor data
     neighbors_idxs = tuple(graph[atom_index])
     neighbor_elements, neighbor_bond_orders = zip(
@@ -273,48 +114,141 @@ def _find_candidate_atom_constraints(
             neighbor_spec_to_idxs[neighbor_spec].append(neighbor_idx)
             neighbor_spec_to_count[neighbor_spec] += 1
 
-        for element in (None, atom_element):
-            patterns = ATOM_PATTERNS[element]
-            for pattern, weight in patterns:
-                if not _match_atom_pattern(pattern, neighbor_spec_to_count):
-                    continue
-                new_candidate_patterns = [{}]
-                # Iterate over vectors for each neighbor spec
-                for neighbor_spec, vectors in pattern.items():
-                    # Copy current partial new candidates
-                    prev_candidate_patterns = new_candidate_patterns.copy()
-                    new_candidate_patterns.clear()
-                    neighbor_idxs = neighbor_spec_to_idxs[neighbor_spec]
-                    # Iterate over each partial new candidate
-                    for prev_candidate_pattern in prev_candidate_patterns:
-                        # Iterate over permutations of vectors
-                        for neighbor_idxs_perm in permutations(neighbor_idxs):
-                            new_candidate_pattern = prev_candidate_pattern.copy()
-                            for vector, neighbor_idx in zip(
-                                vectors, neighbor_idxs_perm
-                            ):
-                                new_candidate_pattern[neighbor_idx] = vector
-                            if new_candidate_pattern not in new_candidate_patterns:
-                                new_candidate_patterns.append(new_candidate_pattern)
-                # Iterate over candidate patterns
-                for new_candidate_pattern in new_candidate_patterns:
-                    candidate = (new_candidate_pattern, weight)
-                    if candidate not in candidates:
-                        candidates.append(candidate)
+        patterns = ATOM_PATTERNS[element]
+        for pattern, weight in patterns:
+            if not _match_atom_pattern(pattern, neighbor_spec_to_count):
+                continue
+            new_candidate_patterns = [{}]
+            # Iterate over vectors for each neighbor spec
+            for neighbor_spec, vectors in pattern.items():
+                # Copy current partial new candidates
+                prev_candidate_patterns = new_candidate_patterns.copy()
+                new_candidate_patterns.clear()
+                neighbor_idxs = neighbor_spec_to_idxs[neighbor_spec]
+                # Iterate over each partial new candidate
+                for prev_candidate_pattern in prev_candidate_patterns:
+                    # Iterate over permutations of vectors
+                    for neighbor_idxs_perm in permutations(neighbor_idxs):
+                        new_candidate_pattern = prev_candidate_pattern.copy()
+                        for vector, neighbor_idx in zip(vectors, neighbor_idxs_perm):
+                            new_candidate_pattern[neighbor_idx] = vector
+                        if new_candidate_pattern not in new_candidate_patterns:
+                            new_candidate_patterns.append(new_candidate_pattern)
+            # Iterate over candidate patterns
+            for new_candidate_pattern in new_candidate_patterns:
+                candidate = (new_candidate_pattern, weight)
+                if candidate not in candidates:
+                    candidates.append(candidate)
 
     return candidates
 
 
+def _add_atom_constraints_to_sample(
+    sample: _Constraints,
+    atoms: List[int],
+    constraints_candidates: Dict[int, Tuple[List[Vector], List[float]]],
+) -> None:
+    """
+    Adds non-conflicting atom constraints to depiction sample
+    """
+    random.shuffle(atoms)
+    atom_constraints_copy = {
+        atom_index: (neighbor_constraints.copy(), weights.copy())
+        for atom_index, (
+            neighbor_constraints,
+            weights,
+        ) in constraints_candidates.items()
+    }
+    for u in atoms:
+        # Sample constraint for current atom
+        patterns, weights = atom_constraints_copy[u]
+        # Earlier constraint decision could not be reconciled
+        if not patterns or not weights:
+            continue
+        (pattern,) = random.choices(patterns, weights)
+        # Delete atom constraints for current atom from constraints copy
+        del atom_constraints_copy[u]
+
+        for v, vector in pattern.items():
+            # Set vector in graph-wide constraints
+            sample[u, v] = vector
+            # Remove conflicting constraints for other atoms
+            if v in atom_constraints_copy:
+                removed = 0
+                for i, neighbor_constraints in enumerate(
+                    atom_constraints_copy[v][0].copy()
+                ):
+                    if u in neighbor_constraints and neighbor_constraints[u] != -vector:
+                        atom_constraints_copy[v][0].pop(i - removed)
+                        atom_constraints_copy[v][1].pop(i - removed)
+                        removed += 1
+
+
+def _calculate_depiction_coordinates(
+    graph: nx.Graph, constraints: _Constraints
+) -> Dict[int, Vector]:
+    coordinates = {0: Vector(0, 0)}
+    for u, v in nx.dfs_edges(graph, source=0):
+        coordinates[v] = coordinates[u] + constraints[u, v]
+
+    return coordinates
+
+
+def _choose_best_sample(
+    coordinates_samples: List[Dict[int, Vector]]
+) -> Dict[int, Vector]:
+    """
+    Selects the best sample, and applies to the graph
+    """
+    # TODO: Actual best sample implementation
+    return coordinates_samples[0]
+
+
 def depict(graph: nx.Graph) -> None:
     """
-    Shortcut that uses that :class:`Depicter`
-    to add depiction coordinates to the input graph.
+    Determines depiction coordinates for the graph.
 
-    It is equivalent to::
-        Depicter(graph).depict()
+    Adds to atom attributes to the graph *in-place*,
+    thus changing the original input graph to include depiction coordinates.
 
-    :param graph: The graph to depict
+    :param graph: The graph to calculate depiction coordinates for.
     :type graph: nx.Graph
     """
-    depicter = Depicter(graph)
-    depicter.depict()
+    # Makes copy of original molecular graph,
+    # and removes hydrogens and terminal atoms to produce a "pruned" graph.
+    pruned_graph = graph.copy()
+    prune_hydrogens(pruned_graph)
+    prune_terminals(pruned_graph)
+
+    # Produce a copy list of atom indices
+    atoms: List[int] = list(pruned_graph.nodes)
+    # Determine and sample constraints
+    atom_constraints = {}
+    for atom_index in atoms:
+        constraints_list = _find_candidate_atom_constraints(atom_index, graph)
+        if not constraints_list:
+            raise DepicterError(
+                f"No candidate constraints found for atom with index {atom_index}"
+            )
+        atom_constraints[atom_index] = constraints_list
+
+    # Construct final representation of atom constraints
+    atom_constraints_candidates = {
+        atom_index: (
+            [neighbor_constraints for neighbor_constraints, _ in patterns],
+            [weight for _, weight in patterns],
+        )
+        for atom_index, patterns in atom_constraints.items()
+    }
+
+    # Produce constraint samples
+    samples = [_Constraints() for _ in range(SAMPLE_SIZE)]
+    for sample in samples:
+        _add_atom_constraints_to_sample(sample, atoms, atom_constraints_candidates)
+    # Convert constraints to Cartesian coordinates
+    coordinates_samples = [
+        _calculate_depiction_coordinates(graph, sample) for sample in samples
+    ]
+    best_sample = _choose_best_sample(coordinates_samples)
+    for atom_index, coords in best_sample.items():
+        set_depict_coords(atom_index, graph, coords)
