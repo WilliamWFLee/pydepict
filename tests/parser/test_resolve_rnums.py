@@ -12,10 +12,15 @@ import networkx as nx
 import pytest
 
 from pydepict.consts import Atom, AtomRnums, Rnums
-from pydepict.parser import new_atom, resolve_rnums
+from pydepict.parser import Stream, new_atom, resolve_rnums
 
 GraphData = Tuple[Dict[int, Atom], Iterable[Tuple[int, int]]]
 RnumData = Tuple[AtomRnums, int, Rnums, GraphData]
+
+
+@pytest.fixture
+def stream() -> Stream:
+    return Stream("")
 
 
 def find_expected_bond_order(
@@ -148,12 +153,16 @@ def valid_graph(valid_rnum_data: RnumData) -> nx.Graph:
     return graph
 
 
-def test_valid_rnum_spec(valid_rnum_data: RnumData, valid_graph: nx.Graph):
+def test_valid_rnum_spec(
+    valid_rnum_data: RnumData,
+    valid_graph: nx.Graph,
+    stream: Stream,
+):
     atom_rnums, atom_index, rnums = valid_rnum_data[:3]
 
     # Rnums copied to avoid data needed for assertions being destroyed
     rnums_copy = rnums.copy()
-    resolve_rnums(atom_rnums, atom_index, rnums_copy, valid_graph)
+    resolve_rnums(atom_rnums, atom_index, rnums_copy, valid_graph, stream)
 
     for rnum_index, bond_order in atom_rnums:
         if rnum_index in rnums:
