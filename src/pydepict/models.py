@@ -18,7 +18,7 @@ class Vector(NamedTuple):
 
     @classmethod
     def from_tuple(cls, coords: Tuple[float, float]) -> "Vector":
-        return Vector(coords[0], coords[1])
+        return cls(coords[0], coords[1])
 
     def normal(self) -> "Vector":
         """
@@ -88,7 +88,7 @@ class Vector(NamedTuple):
         return NotImplemented
 
     def __mul__(self, scalar: float) -> "Vector":
-        return Vector(self.x * scalar, self.y * scalar)
+        return self.__class__(self.x * scalar, self.y * scalar)
 
     def __rmul__(self, scalar: float) -> "Vector":
         return self.__mul__(scalar)
@@ -105,4 +105,4 @@ class Vector(NamedTuple):
         return f"({self.x}, {self.y})"
 
     def __repr__(self):
-        return f"Vector({self.x}, {self.y})"
+        return f"{self.__class__.__name__}({self.x}, {self.y})"
