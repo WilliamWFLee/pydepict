@@ -15,6 +15,8 @@ from typing import Dict, List, Tuple
 
 import networkx as nx
 
+from pydepict.errors import DepicterError
+
 from .consts import (
     ATOM_PATTERNS,
     SAMPLE_SIZE,
@@ -130,7 +132,9 @@ class Depicter:
         """
         Adds non-conflicting atom constraints to depiction samples
         """
-        for constraints in self._samples:
+        index = 0
+        while index < SAMPLE_SIZE:
+            constraints = self._samples[index]
             random.shuffle(self._atoms)
             atom_constraints_copy = {
                 atom_index: (neighbor_constraints.copy(), weights.copy())
@@ -142,6 +146,9 @@ class Depicter:
             for u in self._atoms:
                 # Sample constraint for current atom
                 patterns, weights = atom_constraints_copy[u]
+                # Earlier constraint decision could not be reconciled
+                if not patterns or not weights:
+                    continue
                 (pattern,) = random.choices(patterns, weights)
                 # Delete atom constraints for current atom from constraints copy
                 del atom_constraints_copy[u]
@@ -162,6 +169,7 @@ class Depicter:
                                 atom_constraints_copy[v][0].pop(i - removed)
                                 atom_constraints_copy[v][1].pop(i - removed)
                                 removed += 1
+            index += 1
 
     def _calculate_sample_coordinates(self):
         """
