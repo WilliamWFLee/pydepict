@@ -31,7 +31,7 @@ AtomPattern = List[
     ]
 ]
 NeighborConstraints = Dict[int, Vector]
-AtomConstraintsCandidates = Tuple[List[NeighborConstraints], List[float]]
+AtomConstraintsCandidates = Dict[int, Tuple[List[NeighborConstraints], List[float]]]
 
 # GENERAL CHEMISTRY DATA
 
@@ -185,13 +185,6 @@ ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
         (
             {
                 ("C", 1): (RRR, RDD, LLL, RUU),
-            },
-            1,
-        ),
-        (
-            {
-                (None, 1): (RRR,),
-                ("C", 1): (RDD, LLL, RUU),
             },
             1,
         ),
