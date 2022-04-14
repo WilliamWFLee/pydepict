@@ -48,6 +48,7 @@ class Program:
         self.error_message.grid(column=0, row=2, columnspan=2, pady=PADDING)
 
     def _show_smiles(self):
+        self.error_message.config(text="")
         self.root.withdraw()
         try:
             show(self.smiles_input.get())
