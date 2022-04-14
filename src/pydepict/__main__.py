@@ -11,6 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from tkinter import Tk
 from tkinter.ttk import Button, Entry, Frame, Label
+import traceback
 
 from . import show
 
@@ -52,6 +53,7 @@ class Program:
             show(self.smiles_input.get())
         except Exception as e:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")
+            traceback.print_exc()
         self.root.deiconify()
 
     def run(self):
