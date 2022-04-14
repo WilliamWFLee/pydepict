@@ -663,7 +663,7 @@ def parse_atom(stream: Stream[str]) -> Atom:
         element = parse_organic_symbol(stream)
         atom["element"] = element
     else:
-        raise new_exception("Expected atom", stream)
+        raise new_exception("Invalid atom or unknown organic symbol", stream)
 
     # Deal with aromatic atoms
     if atom["element"].islower():
@@ -755,6 +755,7 @@ def parse_chain(
 def parse_branch(
     stream: Stream[str], graph: nx.Graph, prev_atom_idx: int, atom_idx: int, rnums: Rnum
 ):
+    line_encountered = False
     expect(stream, "(", "opening parenthesis for branch")
     while True:
         bond = None
@@ -768,10 +769,10 @@ def parse_branch(
             dot = True
 
         # Line
-        try:
-            first_atom_idx, atom_idx = parse_line(stream, graph, atom_idx, rnums)
-        except ParserError:
+        if not stream.peek() in {"["} | ELEMENT_SYMBOL_FIRST_CHARS:
             break
+        first_atom_idx, atom_idx = parse_line(stream, graph, atom_idx, rnums)
+        line_encountered = True
 
         # Bond previous atom to first atom in line
         if not dot:
@@ -782,6 +783,8 @@ def parse_branch(
                 )
             graph.add_edge(first_atom_idx, prev_atom_idx, **bond)
         prev_atom_idx = atom_idx - 1
+    if not line_encountered:
+        raise new_exception("Branch cannot be empty", stream)
 
     expect(stream, ")", "closing parenthesis for branch")
     return atom_idx
@@ -885,6 +888,9 @@ def parse(smiles: str) -> Tuple[nx.Graph, str]:
     graph = nx.Graph()
     atom_idx = 0
     rnums = {}
+
+    if not smiles:
+        raise new_exception("Cannot parse empty string", stream)
 
     # Syntax parsing + on-the-fly semantics
     parse_line(stream, graph, atom_idx, rnums)
