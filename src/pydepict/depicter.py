@@ -71,6 +71,12 @@ class _Constraints:
             del self._dict[u][v]
         raise KeyError(key)
 
+    def clear(self):
+        """
+        Clears all constraints
+        """
+        self._dict.clear()
+
 
 def _match_atom_pattern(
     pattern: AtomPattern, neighbor_spec_to_count: Dict[NeighborSpec, int]
@@ -95,7 +101,7 @@ def _find_candidate_atom_constraints(
     for the atom with the specified index in the specified graph.
     """
     # Determines element of atom
-    element = graph.nodes(data="element")[atom_index]
+    neighbor_element = graph.nodes(data="element")[atom_index]
     # Get neighbor data
     neighbors_idxs = tuple(graph[atom_index])
     neighbor_elements, neighbor_bond_orders = zip(
@@ -104,24 +110,24 @@ def _find_candidate_atom_constraints(
             for u in neighbors_idxs
         )
     )
+    # Get patterns
+    patterns = ATOM_PATTERNS[neighbor_element]
     # Determine candidates
     candidates = []
     # Iterate over possibilities of neighbor being connected via any bond
     # or being any element
-    for elements, bond_orders in product(
+    for neighbor_elements, neighbor_bond_orders in product(
         none_iter(neighbor_elements), none_iter(neighbor_bond_orders)
     ):
         # Map (element, order) pairs to counts, and to list of indices
         neighbor_spec_to_count = defaultdict(lambda: 0)
         neighbor_spec_to_idxs = defaultdict(lambda: [])
-        for neighbor_idx, element, bond_order in zip(
-            neighbors_idxs, elements, bond_orders
+        for neighbor_idx, neighbor_element, neighbor_bond_order in zip(
+            neighbors_idxs, neighbor_elements, neighbor_bond_orders
         ):
-            neighbor_spec = (element, bond_order)
+            neighbor_spec = (neighbor_element, neighbor_bond_order)
             neighbor_spec_to_idxs[neighbor_spec].append(neighbor_idx)
             neighbor_spec_to_count[neighbor_spec] += 1
-
-        patterns = ATOM_PATTERNS[element]
         for pattern, weight in patterns:
             if not _match_atom_pattern(pattern, neighbor_spec_to_count):
                 continue
@@ -158,39 +164,50 @@ def _add_atom_constraints_to_sample(
     """
     Adds non-conflicting atom constraints to depiction sample
     """
-    random.shuffle(atoms)
-    candidates_copy = {
-        atom_index: (neighbor_constraints.copy(), weights.copy())
-        for atom_index, (
-            neighbor_constraints,
-            weights,
-        ) in constraints_candidates.items()
-    }
-    for u in atoms:
-        # Sample constraint for current atom
-        patterns, weights = candidates_copy[u]
-        # Earlier constraint decision could not be reconciled
-        if not patterns or not weights:
-            continue
-        (pattern,) = random.choices(patterns, weights)
-        # Delete atom constraints for current atom from constraints copy
-        del candidates_copy[u]
+    while True:
+        random.shuffle(atoms)
+        candidates_copy = {
+            atom_index: (neighbor_constraints.copy(), weights.copy())
+            for atom_index, (
+                neighbor_constraints,
+                weights,
+            ) in constraints_candidates.items()
+        }
+        for u in atoms:
+            # Sample constraint for current atom
+            patterns, weights = candidates_copy[u]
+            # Earlier constraint decision does not work with other constraints
+            if not patterns or not weights:
+                break
+            (pattern,) = random.choices(patterns, weights)
+            # Delete atom constraints for current atom from constraints copy
+            del candidates_copy[u]
 
-        for v, vector in pattern.items():
-            # Set vector in graph-wide constraints
-            sample[u, v] = vector
-            # Remove conflicting constraints for other atoms
-            if v in candidates_copy:
-                filtered_constraints = []
-                filtered_weights = []
-                for i, neighbor_constraints in enumerate(candidates_copy[v][0].copy()):
-                    if u in neighbor_constraints and neighbor_constraints[u] == -vector:
-                        filtered_constraints.append(candidates_copy[v][0][i])
-                        filtered_weights.append(candidates_copy[v][1][i])
-                candidates_copy[v] = (filtered_constraints, filtered_weights)
+            for v, vector in pattern.items():
+                # Set vector in graph-wide constraints sample
+                sample[u, v] = vector
+                # Remove conflicting constraints for other atoms
+                if v in candidates_copy:
+                    filtered_constraints = []
+                    filtered_weights = []
+                    for i, neighbor_constraints in enumerate(
+                        candidates_copy[v][0].copy()
+                    ):
+                        if (
+                            u in neighbor_constraints
+                            and neighbor_constraints[u] == -vector
+                        ):
+                            filtered_constraints.append(candidates_copy[v][0][i])
+                            filtered_weights.append(candidates_copy[v][1][i])
+                    candidates_copy[v] = (filtered_constraints, filtered_weights)
+        else:
+            # for loop was not broken
+            break
+        # Clears sample to start again
+        sample.clear()
 
 
-def _calculate_depiction_coordinates(
+def _apply_depiction_sample(
     graph: nx.Graph, constraints: _Constraints
 ) -> Dict[int, Vector]:
     coordinates = {0: Vector(0, 0)}
@@ -252,9 +269,7 @@ def depict(graph: nx.Graph) -> None:
     for sample in samples:
         _add_atom_constraints_to_sample(sample, atoms, atom_constraints_candidates)
     # Convert constraints to Cartesian coordinates
-    coordinates_samples = [
-        _calculate_depiction_coordinates(graph, sample) for sample in samples
-    ]
+    coordinates_samples = [_apply_depiction_sample(graph, sample) for sample in samples]
     best_sample = _choose_best_sample(coordinates_samples)
     for atom_index, coords in best_sample.items():
         set_depict_coords(atom_index, graph, coords)
