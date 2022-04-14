@@ -81,6 +81,8 @@ BOND_TO_ORDER: Dict[str, float] = {
     "=": 2,
     "#": 3,
     "$": 4,
+    "/": 1,
+    "\\": 1,
 }
 
 # PARSER SPECIFICATIONS
