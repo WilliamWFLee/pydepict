@@ -178,6 +178,13 @@ ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
         ),
         (
             {
+                ("O", 2): (UUU,),
+                (None, 1): (LLD, RRD),
+            },
+            1,
+        ),
+        (
+            {
                 ("C", 1): (RRR, DDD, LLL, UUU),
             },
             1,
