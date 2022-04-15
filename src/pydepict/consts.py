@@ -394,6 +394,7 @@ del meth, patterns, patterns_copy
 
 # OTHER DEPICTER CONSTANTS
 
+CHAIN_ELEMENTS = frozenset("C N O S".split())
 SAMPLE_SIZE = 100
 
 # RENDERER WINDOW ATTRIBUTES

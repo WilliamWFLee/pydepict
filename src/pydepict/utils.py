@@ -10,10 +10,11 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from itertools import product
 from math import sqrt
-from typing import Iterable, List, Optional, TypeVar
+from typing import Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
+from .consts import CHAIN_ELEMENTS, AtomAttribute, BondAttribute
 from .models import Vector
 
 __all__ = [
@@ -29,6 +30,74 @@ __all__ = [
 ]
 
 T = TypeVar("T")
+
+
+def get_atom_attrs(
+    atom_index: int, graph: nx.Graph, *attrs: str, allow_none: bool = False
+) -> Union[AtomAttribute, Tuple[AtomAttribute, ...]]:
+    """
+    Retrieves atom attributes for the specified atom in the specified graph.
+
+    Accepts one or more attribute names. If one attribute name is provided,
+    then that attribute value is returned. If multiple attributes name are provided,
+    then a tuple of attribute values is returned, in the order in which
+    the attribute names are passed.
+
+    :param atom_index: The index of the atom to look for
+    :type atom_index: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param *args: One or more attribute names to fetch
+    :type *args: str
+    :param allow_none: Whether :data:`None` may be returned
+                       if an attribute is not found, defaults to :data:`False`
+    :type allow_none: bool
+    :return: The attribute value, or a tuple of attribute values
+    :rtype: Union[AtomAttribute, Tuple[AtomAttribute, ...]]
+    """
+    atom = graph.nodes[atom_index]
+    if len(attrs) == 1:
+        return atom.get(attrs[0], None) if allow_none else atom[attrs[0]]
+    return (
+        tuple(atom.get(attr, None) for attr in attrs)
+        if allow_none
+        else tuple(atom[attr] for attr in attrs)
+    )
+
+
+def get_bond_attrs(
+    u: int, v: int, graph: nx.Graph, *attrs: str, allow_none: bool = True
+) -> Union[BondAttribute, Tuple[BondAttribute, ...]]:
+    """
+    Retrieves bond attributes between the specified atoms in the specified graph.
+
+    Accepts one or more attribute names. If one attribute name is provided,
+    then that attribute value is returned. If multiple attributes name are provided,
+    then a tuple of attribute values is returned, in the order in which
+    the attribute names are passed.
+
+    :param u: One endpoint of the bond
+    :type u: int
+    :param v: The other endpoint of the bond
+    :type v: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param *args: One or more attribute names to fetch
+    :type *args: str
+    :param allow_none: Whether :data:`None` may be returned
+                       if an attribute is not found, defaults to :data:`False`
+    :type allow_none: bool
+    :return: The attribute value, or a tuple of attribute values
+    :rtype: Union[AtomAttribute, Tuple[AtomAttribute, ...]]
+    """
+    bond = graph[u][v]
+    if len(attrs) == 1:
+        return bond.get(attrs[0], None) if allow_none else bond[attrs[0]]
+    return (
+        tuple(bond.get(attr, None) for attr in attrs)
+        if allow_none
+        else tuple(bond[attr] for attr in attrs)
+    )
 
 
 def bond_order_sum(atom_index: int, graph: nx.Graph) -> int:
@@ -68,6 +137,38 @@ def atom_valence(atom_index: int, graph: nx.Graph) -> int:
     )
 
 
+def num_heavy_atom_neighbors(atom_index: int, graph: nx.Graph) -> int:
+    """
+    Determines the number of heavy atom neighbors for the specified atom.
+    A heavy atom is any atom that is not hydrogen.
+
+    :param atom_index: The index of the atom to find
+                       the number of heavy atom neighbors for
+    :type atom_index: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :return: The number of heavy atom neighbors
+    :rtype: int
+    """
+    return sum(get_atom_attrs(v, graph, "element") != "H" for v in graph[atom_index])
+
+
+def num_bond_order(atom_index: int, graph: nx.Graph, order: int) -> bool:
+    """
+    Counts the number of bonds of a particular order.
+
+    :param atom_index: The index of the atom to count for
+    :type atom_index: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param order: The order of bonds to count
+    :type order: int
+    :return: The number of bonds of the specified order
+    :rtype: int
+    """
+    return list(bond["order"] == 3 for bond in graph[atom_index].values()).count(order)
+
+
 def is_allenal_center(atom_index: int, graph: nx.Graph) -> bool:
     """
     Determines whether or not the atom at the specified index
@@ -80,15 +181,31 @@ def is_allenal_center(atom_index: int, graph: nx.Graph) -> bool:
     :return: Whether the atom is an allene center or not
     :type: bool
     """
-    atom = graph.nodes[atom_index]
-    num_double_bonds = list(
-        bond["order"] for bond in graph.adj[atom_index].values()
-    ).count(2)
-
     return (
-        atom["element"] == "C"
-        and num_double_bonds == 2
+        get_atom_attrs(atom_index, graph, "element") == "C"
+        and num_bond_order(atom_index, graph, 2) == 2
         and bond_order_sum(atom_index, graph) == 4
+    )
+
+
+def is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
+    """
+    Determines whether or not the specified atom in the specified graph
+    is a chain atom (i.e. eligible to be treated as being in a chain).
+
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param atom_index: The index of the atom
+    :type atom_index: int
+    :return: Whether the atom is a chain atom
+    :rtype: bool
+    """
+    element, charge = get_atom_attrs(graph, atom_index, "element", "charge")
+    return (
+        element in CHAIN_ELEMENTS
+        and charge == 0
+        and num_heavy_atom_neighbors(atom_index, graph) in (2, 3)
+        and num_bond_order(atom_index, graph, 3) == 0
     )
 
 
@@ -105,8 +222,8 @@ def depicted_distance(u: int, v: int, graph: nx.Graph) -> float:
     :return: The distance between the two atoms
     :rtype: float
     """
-    ux, uy = graph.nodes[u]["dx"], graph.nodes[u]["dy"]
-    vx, vy = graph.nodes[v]["dx"], graph.nodes[v]["dy"]
+    ux, uy = get_atom_attrs(u, graph, "dx", "dy")
+    vx, vy = get_atom_attrs(v, graph, "dx", "dy")
     return sqrt((vx - ux) ** 2 + (vy - uy) ** 2)
 
 
@@ -141,9 +258,7 @@ def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The depiction coordinates for the specified atom
     :rtype: Vector
     """
-    x = graph.nodes[atom_index]["dx"]
-    y = graph.nodes[atom_index]["dy"]
-
+    x, y = get_atom_attrs(atom_index, graph, "dx", "dy")
     return Vector(x, y)
 
 
@@ -175,8 +290,7 @@ def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The display coordinates for the specified atom
     :rtype: Vector
     """
-    x = graph.nodes[atom_index]["rx"]
-    y = graph.nodes[atom_index]["ry"]
+    x, y = get_atom_attrs(atom_index, graph, "rx", "ry")
 
     return Vector(x, y)
 
