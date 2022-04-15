@@ -9,9 +9,10 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 
+import argparse
+import traceback
 from tkinter import Tk
 from tkinter.ttk import Button, Entry, Frame, Label
-import traceback
 
 from . import show
 
@@ -64,12 +65,28 @@ class Program:
         self.root.mainloop()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("smiles", nargs="?", default=None)
+
+    return parser.parse_args()
+
+
 def main():
     """
-    Shortcut function equivalent to::
-        Program().run()
+    Runs the standalone program.
+
+    If the calling script is run with no arguments, then a dialog is shown,
+    allowing entry of SMILES strings multiple times.
+
+    If a SMILES string is passed as the first and only argument,
+    then only the renderer window for that SMILES string is shown.
     """
-    Program().run()
+    args = parse_args()
+    if args.smiles is None:
+        Program().run()
+    else:
+        show(args.smiles)
 
 
 if __name__ == "__main__":
