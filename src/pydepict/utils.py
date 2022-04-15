@@ -10,7 +10,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from itertools import product
 from math import sqrt
-from typing import Iterable, Optional, TypeVar
+from typing import Iterable, List, Optional, TypeVar
 
 import networkx as nx
 
@@ -212,29 +212,31 @@ def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:
     )
 
 
-def prune_hydrogens(graph: nx.Graph):
+def prune_hydrogens(graph: nx.Graph, atoms: List[int]):
     """
-    Remove hydrogen atoms and its adjacent edges from the graph.
+    Finds hydrogen atoms in the graph, and removes them from the specified list
+    of atom indices.
 
-    :param graph: The graph to remove hydrogens from
+    :param graph: The graph to find hydrogens within
     :type graph: nx.Graph
+    :param atoms: The list to remove atom indices from.
+    :type atoms: List[int]
     """
     for atom_index, element in dict(graph.nodes(data="element")).items():
         if element == "H":
-            graph.remove_node(atom_index)
+            atoms.remove(atom_index)
 
 
-def prune_terminals(graph: nx.Graph):
+def prune_terminals(graph: nx.Graph, atoms: List[int]):
     """
-    Remove terminal atoms and its adjacent edges from the graph.
+    Finds terminals atoms in the graph, and removes them from the specified list
+    of atom indices.
 
-    Terminal atoms are those that are bonded with only one other atom.
-
-    :param graph: The graph to remove terminal atoms from
+    :param graph: The graph to find terminals within
     :type graph: nx.Graph
+    :param atoms: The list to remove atom indices from.
+    :type atoms: List[int]
     """
-    terminals = []
     for atom_index in list(graph.nodes):
         if len(graph[atom_index]) <= 1:
-            terminals.append(atom_index)
-    graph.remove_nodes_from(terminals)
+            atoms.remove(atom_index)

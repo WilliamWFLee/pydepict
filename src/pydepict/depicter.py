@@ -237,14 +237,12 @@ def depict(graph: nx.Graph) -> None:
     :param graph: The graph to calculate depiction coordinates for.
     :type graph: nx.Graph
     """
-    # Makes copy of original molecular graph,
-    # and removes hydrogens and terminal atoms to produce a "pruned" graph.
-    pruned_graph = graph.copy()
-    prune_hydrogens(pruned_graph)
-    prune_terminals(pruned_graph)
+    # Makes list of non-hydrogen, non-terminal atoms in the graph
+    atoms: List[int] = list(graph.nodes)
+    prune_hydrogens(graph, atoms)
+    prune_terminals(graph, atoms)
 
     # Produce a copy list of atom indices
-    atoms: List[int] = list(pruned_graph.nodes)
     # Determine and sample constraints
     atom_constraints: Dict[int, List[Tuple[NeighborConstraints, float]]] = {}
     for atom_index in atoms:
