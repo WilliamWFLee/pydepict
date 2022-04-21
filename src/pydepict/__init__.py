@@ -19,8 +19,8 @@ __all__ = [
     "__author__",
     "__copyright__",
     "__license__",
-    "version_info",
     "__version__",
+    "version_info",
     "show",
     "parse",
     "depict",
@@ -32,12 +32,9 @@ class _VersionInfo(NamedTuple):
     major: int
     minor: int
     patch: int
-    pre_release: Optional[str] = None
 
     def __str__(self):
-        return f"{self.major}.{self.minor}.{self.patch}" + (
-            f"-{self.pre_release}" if self.pre_release is not None else ""
-        )
+        return f"{self.major}.{self.minor}.{self.patch}"
 
 
 __author__ = "William Lee; The University of Sheffield"
