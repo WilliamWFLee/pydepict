@@ -31,7 +31,14 @@ AtomPattern = List[
     ]
 ]
 NeighborConstraints = Dict[int, Vector]
-AtomConstraintsCandidates = Dict[int, Tuple[List[NeighborConstraints], List[float]]]
+ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
+ConstraintsCandidates = Dict[
+    Tuple[int],
+    Tuple[
+        List[List[NeighborConstraints]],
+        List[float],
+    ],
+]
 
 # GENERAL CHEMISTRY DATA
 
@@ -128,7 +135,7 @@ LLL = Vector(-1, 0)
 LLU = Vector(-2, 1).scale_to(1)
 LUU = Vector(-1, 2).scale_to(1)
 
-# DEPICTER ATOM CONSTRAINTS
+# DEPICTER CONSTRAINTS
 
 ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
     "C": [
@@ -180,8 +187,15 @@ ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
         ),
         (
             {
-                ("O", 2): (UUU,),
+                ("O", None): (UUU,),
                 (None, 1): (LLD, RRD),
+            },
+            1,
+        ),
+        (
+            {
+                ("O", None): (LLD,),
+                (None, 1): (UUU, RRD),
             },
             1,
         ),
@@ -392,10 +406,68 @@ for meth in (Vector.x_reflect, Vector.y_reflect):
         )
 del meth, patterns, patterns_copy
 
+CHAIN_PATTERN_UNITS: List[Tuple[ChainPattern, ChainPattern]] = [
+    (
+        (
+            (LLD, RRD),
+            {
+                1: (UUU,),
+                2: (LUU, RUU),
+            },
+        ),
+        (
+            (LLU, RRU),
+            {
+                1: (DDD,),
+                2: (LDD, RDD),
+            },
+        ),
+    ),
+    (
+        (
+            (DDD, RRU),
+            {
+                1: (LLU,),
+                2: (LLL, LUU),
+            },
+        ),
+        (
+            (LLD, UUU),
+            {
+                1: (RRD,),
+                2: (RRR, RDD),
+            },
+        ),
+    ),
+]
+
+# Combine reflections and order swapping to produce other patterns
+
+for pattern in CHAIN_PATTERN_UNITS.copy():
+    first, second = pattern
+    swapped = (second, first)
+    if swapped not in CHAIN_PATTERN_UNITS:
+        CHAIN_PATTERN_UNITS.append(swapped)
+for meth in (Vector.x_reflect, Vector.y_reflect):
+    for pattern in CHAIN_PATTERN_UNITS.copy():
+        new_pattern = tuple(
+            (
+                (meth(prev_vector), meth(next_vector)),
+                {
+                    num_subs: tuple(meth(v) for v in vectors)
+                    for num_subs, vectors in sub_constraints.items()
+                },
+            )
+            for (prev_vector, next_vector), sub_constraints in pattern
+        )
+        if new_pattern not in CHAIN_PATTERN_UNITS:
+            CHAIN_PATTERN_UNITS.append(new_pattern)
+
 # OTHER DEPICTER CONSTANTS
 
 CHAIN_ELEMENTS = frozenset("C N O S".split())
 SAMPLE_SIZE = 100
+DEPICTION_ATTEMPTS = 10
 
 # RENDERER WINDOW ATTRIBUTES
 

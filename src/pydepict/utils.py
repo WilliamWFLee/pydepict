@@ -137,6 +137,25 @@ def atom_valence(atom_index: int, graph: nx.Graph) -> int:
     )
 
 
+def neighbors(
+    atom_index: int, graph: nx.Graph, exclude: Iterable[int] = []
+) -> List[int]:
+    """
+    Determines the neighbors of the specified atom,
+    returned as a list of indices.
+
+    :param atom_index: The index of the atom to find neighbors for
+    :type atom_index: int
+    :param graph: The graph to look for the atom in
+    :type graph: nx.Graph
+    :param exclude: A list of indices to exclude from neighbors
+    :type exclude: Iterable[int]
+    :return: A list of neighbors
+    :rtype: List[int]
+    """
+    return list(filter(lambda v: v not in exclude, graph[atom_index].keys()))
+
+
 def num_heavy_atom_neighbors(atom_index: int, graph: nx.Graph) -> int:
     """
     Determines the number of heavy atom neighbors for the specified atom.
@@ -150,7 +169,9 @@ def num_heavy_atom_neighbors(atom_index: int, graph: nx.Graph) -> int:
     :return: The number of heavy atom neighbors
     :rtype: int
     """
-    return sum(get_atom_attrs(v, graph, "element") != "H" for v in graph[atom_index])
+    return sum(
+        get_atom_attrs(v, graph, "element") != "H" for v in neighbors(atom_index, graph)
+    )
 
 
 def num_bond_order(atom_index: int, graph: nx.Graph, order: int) -> bool:
@@ -200,12 +221,12 @@ def is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
     :return: Whether the atom is a chain atom
     :rtype: bool
     """
-    element, charge = get_atom_attrs(graph, atom_index, "element", "charge")
+    element, charge = get_atom_attrs(atom_index, graph, "element", "charge")
     return (
         element in CHAIN_ELEMENTS
         and charge == 0
-        and num_heavy_atom_neighbors(atom_index, graph) in (2, 3)
         and num_bond_order(atom_index, graph, 3) == 0
+        and num_heavy_atom_neighbors(atom_index, graph) in (2, 3)
     )
 
 
@@ -337,7 +358,7 @@ def prune_hydrogens(graph: nx.Graph, atoms: List[int]):
     :type atoms: List[int]
     """
     for atom_index, element in dict(graph.nodes(data="element")).items():
-        if element == "H":
+        if element == "H" and atom_index in atoms:
             atoms.remove(atom_index)
 
 
@@ -352,5 +373,5 @@ def prune_terminals(graph: nx.Graph, atoms: List[int]):
     :type atoms: List[int]
     """
     for atom_index in list(graph.nodes):
-        if len(graph[atom_index]) <= 1:
+        if len(graph[atom_index]) <= 1 and atom_index in atoms:
             atoms.remove(atom_index)
