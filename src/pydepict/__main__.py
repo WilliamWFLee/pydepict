@@ -15,6 +15,9 @@ from tkinter import Tk
 from tkinter.ttk import Button, Entry, Frame, Label
 
 from . import show
+from .depicter import depict
+from .parser import parse
+from .renderer import Renderer
 
 PADDING = 10
 
@@ -33,6 +36,7 @@ class Program:
         self.root = Tk()
         self.root.wm_title("pydepict")
 
+        # Instantiate widgets
         self.frame = Frame(self.root, padding=PADDING)
         self.smiles_input_label = Label(self.frame, text="SMILES")
         self.smiles_input = Entry(self.frame)
@@ -42,21 +46,26 @@ class Program:
         )
         self.error_message = Label(self.frame, foreground="red")
 
+        # Arrange and display widgets
         self.frame.grid()
         self.smiles_input_label.grid(column=0, row=0, padx=PADDING, pady=PADDING)
         self.smiles_input.grid(column=1, row=0, padx=PADDING, pady=PADDING)
         self.display_button.grid(column=0, row=1, columnspan=2, pady=PADDING)
         self.error_message.grid(column=0, row=2, columnspan=2, pady=PADDING)
 
+        self.renderer = Renderer()
+        self.renderer.show(False)
+
     def _show_smiles(self):
         self.error_message.config(text="")
-        self.root.withdraw()
+        smiles = self.smiles_input.get()
         try:
-            show(self.smiles_input.get())
+            graph, _ = parse(smiles)
+            depict(graph)
+            self.renderer.graph = graph
         except Exception as e:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")
             traceback.print_exc()
-        self.root.deiconify()
 
     def run(self):
         """
