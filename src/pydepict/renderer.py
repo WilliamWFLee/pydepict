@@ -140,7 +140,7 @@ class Renderer:
             max_rx = max((n[1] for n in self._graph.nodes(data="rx")), default=0)
             max_ry = max((n[1] for n in self._graph.nodes(data="ry")), default=0)
         else:
-            max_rx = max_rx = 0
+            max_rx = max_ry = 0
         with self._display_lock:
             self._display = pygame.display.set_mode(
                 (max_rx + FRAME_MARGIN, max_ry + FRAME_MARGIN)
@@ -207,12 +207,13 @@ class Renderer:
         if self.redraw:
             # Draw on display
             self._display.fill(WHITE)
-            for atom_index in self._graph.nodes:
-                self._render_atom(atom_index)
-            for u, v in self._graph.edges:
-                self._render_bond(u, v)
-            pygame.display.update()
+            if self.graph is not None:
+                for atom_index in self._graph.nodes:
+                    self._render_atom(atom_index)
+                for u, v in self._graph.edges:
+                    self._render_bond(u, v)
             self.redraw = False
+        pygame.display.update()
 
     def _handle_events(self):
         for event in pygame.event.get():
