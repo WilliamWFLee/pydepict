@@ -19,7 +19,6 @@ import networkx as nx
 from .consts import (
     ATOM_PATTERNS,
     CHAIN_PATTERN_UNITS,
-    DEPICTION_ATTEMPTS,
     SAMPLE_SIZE,
     AtomPattern,
     ConstraintsCandidates,
@@ -294,45 +293,30 @@ def _sample_constraints(
     """
     Adds non-conflicting constraints to depiction sample
     """
-    for _ in range(DEPICTION_ATTEMPTS):
-        candidates_copy = deepcopy(constraints_candidates)
-        # Shuffle order in which fragments are considered
-        blocks = list(constraints_candidates.keys())
-        random.shuffle(blocks)
-        for block in blocks:
-            # Sample constraint for current block
-            patterns, weights = candidates_copy[block]
-            # Earlier constraint decision does not work with other constraints
-            if not patterns or not weights:
-                break
-            (pattern,) = random.choices(patterns, weights)
-            # Delete constraints for current block from constraints
-            del candidates_copy[block]
+    candidates_copy = deepcopy(constraints_candidates)
+    # Shuffle order in which fragments are considered
+    blocks = list(constraints_candidates.keys())
+    random.shuffle(blocks)
+    for block in blocks:
+        # Sample constraint for current block
+        patterns, weights = candidates_copy[block]
+        # Earlier constraint decision does not work with other constraints
+        if not patterns or not weights:
+            return False
+        (pattern,) = random.choices(patterns, weights)
+        # Delete constraints for current block from constraints
+        del candidates_copy[block]
 
-            for u, neighbor_constraints in zip(block, pattern):
-                for v, vector in neighbor_constraints.items():
-                    # Set vector in graph-wide constraints sample
-                    sample[u, v] = vector
-                    # Remove conflicting constraints
-                    constraints_left = _remove_conflicting_constraints(
-                        u, v, vector, candidates_copy
-                    )
-                    if not constraints_left:
-                        break
-                else:
-                    continue
-                break
-            else:
-                continue
-            break
-        else:
-            # for loop was not broken
-            break
-        # Clears sample to start again
-        sample.clear()
-    else:
-        # Constraints could not satisfied within the attempt limit
-        return False
+        for u, neighbor_constraints in zip(block, pattern):
+            for v, vector in neighbor_constraints.items():
+                # Set vector in graph-wide constraints sample
+                sample[u, v] = vector
+                # Remove conflicting constraints
+                constraints_left = _remove_conflicting_constraints(
+                    u, v, vector, candidates_copy
+                )
+                if not constraints_left:
+                    return False
     return True
 
 

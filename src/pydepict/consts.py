@@ -467,7 +467,6 @@ for meth in (Vector.x_reflect, Vector.y_reflect):
 
 CHAIN_ELEMENTS = frozenset("C N O S".split())
 SAMPLE_SIZE = 100
-DEPICTION_ATTEMPTS = 10
 
 # RENDERER WINDOW ATTRIBUTES
 
