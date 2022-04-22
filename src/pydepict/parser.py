@@ -572,7 +572,7 @@ def parse_bracket_atom(stream: Stream[str]) -> Atom:
 
     attrs = {}
 
-    expect(stream, "[", "opening bracket for atom")
+    expect(stream, "[")
     if stream.peek() in string.digits:
         attrs["isotope"] = parse_isotope(stream)
     else:
@@ -590,7 +590,7 @@ def parse_bracket_atom(stream: Stream[str]) -> Atom:
         else:
             attrs[attr] = default
 
-    expect(stream, "]", "closing bracket for atom")
+    expect(stream, "]")
 
     return attrs
 
