@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 import argparse
 import traceback
-from tkinter import Tk
+from tkinter import Tk, Event
 from tkinter.ttk import Button, Entry, Frame, Label
 
 from . import show
@@ -41,6 +41,7 @@ class Program:
         self.smiles_input_label = Label(self.frame, text="SMILES")
         self.smiles_input = Entry(self.frame)
         self.smiles_input.bind("<Return>", lambda _: self._show_smiles())
+        self.smiles_input.bind("<Control-KeyRelease-a>", self._select_all)
         self.display_button = Button(
             self.frame, text="Display", command=self._show_smiles
         )
@@ -55,6 +56,11 @@ class Program:
 
         self.renderer = Renderer()
         self.renderer.show(False)
+
+    @staticmethod
+    def _select_all(event: Event):
+        event.widget.select_range(0, "end")
+        event.widget.icursor("end")
 
     def _show_smiles(self):
         self.error_message.config(text="")
