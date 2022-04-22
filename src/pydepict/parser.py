@@ -738,15 +738,18 @@ def parse_chain(
             # The rnum is associated with the most recently parsed atom
             atoms[-1][1].append((rnum, bond))
         if rnum is None:
+            # Add parsed bond (for error detection)
+            if bond is not None:
+                bonds.append(bond)
             # Atoms
             if not stream.peek("") in {"["} | ORGANIC_SYMBOL_FIRST_CHARS:
                 break
             atom = parse_atom(stream)
             if not dot and bond is None:
                 bond = infer_bond(atom["aromatic"], atoms[-1][0]["aromatic"])
+                bonds.append(bond)
             atoms.append((atom, []))
-            bonds.append(bond)
-    if len(bonds) > len(atoms) + 1 or not bonds:
+    if len(bonds) + 1 > len(atoms) or not bonds:
         raise new_exception("Expected atom or rnum", stream)
     return atoms, bonds
 
