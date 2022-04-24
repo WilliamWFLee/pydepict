@@ -54,8 +54,12 @@ class Program:
         self.display_button.grid(column=0, row=1, columnspan=2, pady=PADDING)
         self.error_message.grid(column=0, row=2, columnspan=2, pady=PADDING)
 
+        # Instantiate renderer
         self.renderer = Renderer()
         self.renderer.show(False)
+
+        # Bind window close event
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     @staticmethod
     def _select_all(event: Event):
@@ -72,6 +76,13 @@ class Program:
         except Exception as e:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")
             traceback.print_exc()
+
+    def _on_close(self):
+        """
+        Handles window close event
+        """
+        self.renderer.close()
+        self.root.destroy()
 
     def run(self):
         """
