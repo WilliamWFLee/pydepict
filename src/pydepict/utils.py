@@ -8,6 +8,7 @@ Utility functions
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+import datetime as dt
 from itertools import product
 from math import sqrt
 from typing import Iterable, List, Optional, Tuple, TypeVar, Union
@@ -375,3 +376,13 @@ def prune_terminals(graph: nx.Graph, atoms: List[int]):
     for atom_index in list(graph.nodes):
         if len(graph[atom_index]) <= 1 and atom_index in atoms:
             atoms.remove(atom_index)
+
+
+def get_datetime_filename() -> str:
+    """
+    Returns a human-readable, datetime-based filename without the extension.
+
+    :return: The filename
+    :rtype: str
+    """
+    return dt.datetime.now().strftime("pydepict_%Y_%m_%d_%H_%M_%S")

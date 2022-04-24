@@ -10,6 +10,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from functools import wraps
 from math import sqrt
+import os
 from threading import RLock, Thread
 from typing import Optional
 
@@ -23,6 +24,7 @@ from .consts import (
     FONT_FAMILY,
     FONT_SIZE,
     FRAME_MARGIN,
+    SCREENSHOTS_DIR,
     TEXT_MARGIN,
     WHITE,
     WINDOW_TITLE,
@@ -30,6 +32,7 @@ from .consts import (
 from .utils import (
     Vector,
     average_depicted_bond_length,
+    get_datetime_filename,
     get_depict_coords,
     get_render_coords,
     set_render_coords,
@@ -220,6 +223,13 @@ class Renderer:
             if event.type == pygame.QUIT:
                 self._running = False
                 break
+            elif event.type == pygame.KEYDOWN:
+                ctrl = pygame.key.get_mods() & pygame.KMOD_CTRL
+                if ctrl and event.key == pygame.K_s:
+                    pygame.image.save(
+                        self._display,
+                        os.path.join(SCREENSHOTS_DIR, get_datetime_filename() + ".png"),
+                    )
 
     def _init(self):
         pygame.init()
