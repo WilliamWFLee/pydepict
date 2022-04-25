@@ -8,6 +8,7 @@ Renderer for molecular graphs with relative Cartesian coordinates.
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+from collections import defaultdict
 import os
 from functools import wraps
 from math import sqrt
@@ -71,7 +72,7 @@ class Renderer:
         self.redraw = False  # XXX: Must be before setting graph
         self.graph = graph
         self._thread = None
-        self._on_close_cbs = set()
+        self._event_cbs = defaultdict(lambda: set())
 
     def _with_display_lock(meth):
         """
@@ -246,9 +247,13 @@ class Renderer:
             self._render()
 
         pygame.quit()
+        self._fire("close")
 
-        # Call on close event callbacks
-        for func in self._on_close_cbs:
+    def _fire(self, event: str):
+        """
+        Fire callbacks for :param:`event`.
+        """
+        for func in self._event_cbs[event]:
             func()
 
     def show(self, blocking: bool = True):
@@ -270,19 +275,36 @@ class Renderer:
             self._thread = Thread(target=self._loop, daemon=True)
             self._thread.start()
 
-    def on_close(self, func: Callable[[], Any]):
+    def on(self, event: str, func: Callable[[], Any]):
         """
-        Adds a callback function that is called when the renderer is closed.
-        May be called by passing in the function explicitly,
-        or using the decorator pattern
+        Adds a callback function that is called when event
+        with name :param:`event` is fired, e.g.::
+            renderer.on('close', callback)
 
         The callback function should have no required arguments,
         and any return value is ignored.
 
-        :param func: The callback function to add
+        :param event: The name of the event to bind a callback for
+        :type event: str
+        :param func: The callback function to add.
         :type func: Callable[[]]
         """
-        self._on_close_cbs.add(func)
+        self._event_cbs[event].add(func)
+
+    def not_on(self, event: str, func: Callable[[], Any]):
+        """
+        Removes a callback function from being called
+        when an event with name :param:`event` is fired.
+
+        If the callback function does not exist, then this is ignored.
+
+        :param event: The name of the event to remove
+        :type event: str
+        :param func: The callback function to remove.
+        :type func: Callable[[]]
+        """
+        if func in self._event_cbs[event]:
+            self._event_cbs[event].remove(func)
 
     def close(self):
         """
