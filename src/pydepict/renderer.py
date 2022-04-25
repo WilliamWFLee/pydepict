@@ -8,11 +8,11 @@ Renderer for molecular graphs with relative Cartesian coordinates.
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+import os
 from functools import wraps
 from math import sqrt
-import os
 from threading import RLock, Thread
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import networkx as nx
 import pygame
@@ -29,8 +29,8 @@ from .consts import (
     WHITE,
     WINDOW_TITLE,
 )
+from .models import Vector
 from .utils import (
-    Vector,
     average_depicted_bond_length,
     get_datetime_filename,
     get_depict_coords,
@@ -71,6 +71,7 @@ class Renderer:
         self.redraw = False  # XXX: Must be before setting graph
         self.graph = graph
         self._thread = None
+        self._on_close_cbs = set()
 
     def _with_display_lock(meth):
         """
@@ -246,6 +247,10 @@ class Renderer:
 
         pygame.quit()
 
+        # Call on close event callbacks
+        for func in self._on_close_cbs:
+            func()
+
     def show(self, blocking: bool = True):
         """
         Displays the renderer window.
@@ -264,6 +269,20 @@ class Renderer:
         else:
             self._thread = Thread(target=self._loop, daemon=True)
             self._thread.start()
+
+    def on_close(self, func: Callable[[], Any]):
+        """
+        Adds a callback function that is called when the renderer is closed.
+        May be called by passing in the function explicitly,
+        or using the decorator pattern
+
+        The callback function should have no required arguments,
+        and any return value is ignored.
+
+        :param func: The callback function to add
+        :type func: Callable[[]]
+        """
+        self._on_close_cbs.add(func)
 
     def close(self):
         """

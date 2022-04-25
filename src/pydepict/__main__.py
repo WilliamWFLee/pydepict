@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 import argparse
 import traceback
-from tkinter import Tk, Event
+from tkinter import TclError, Tk, Event
 from tkinter.ttk import Button, Entry, Frame, Label
 
 from . import show
@@ -57,9 +57,11 @@ class Program:
         # Instantiate renderer
         self.renderer = Renderer()
         self.renderer.show(False)
+        # Bind renderer close event to close the program
+        self.renderer.on_close(self.root.destroy)
 
         # Bind window close event
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
 
     @staticmethod
     def _select_all(event: Event):
@@ -77,12 +79,16 @@ class Program:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")
             traceback.print_exc()
 
-    def _on_close(self):
+    def close(self):
         """
-        Handles window close event
+        Close the program.
         """
         self.renderer.close()
-        self.root.destroy()
+        try:
+            self.root.destroy()
+        except TclError:
+            # Root has already been destroyed
+            pass
 
     def run(self):
         """
