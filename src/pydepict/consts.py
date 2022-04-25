@@ -371,6 +371,12 @@ ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
     None: [
         (
             {
+                (None, None): (LLL,),
+            },
+            1,
+        ),
+        (
+            {
                 (None, None): (LLL, RRR),
             },
             1,

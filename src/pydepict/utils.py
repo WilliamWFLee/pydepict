@@ -353,13 +353,15 @@ def prune_hydrogens(graph: nx.Graph, atoms: List[int]):
     Finds hydrogen atoms in the graph, and removes them from the specified list
     of atom indices.
 
+    If removing an index would empty the list, then one remaining index is kept.
+
     :param graph: The graph to find hydrogens within
     :type graph: nx.Graph
     :param atoms: The list to remove atom indices from.
     :type atoms: List[int]
     """
     for atom_index, element in dict(graph.nodes(data="element")).items():
-        if element == "H" and atom_index in atoms:
+        if element == "H" and atom_index in atoms and len(atoms) > 1:
             atoms.remove(atom_index)
 
 
@@ -368,13 +370,15 @@ def prune_terminals(graph: nx.Graph, atoms: List[int]):
     Finds terminals atoms in the graph, and removes them from the specified list
     of atom indices.
 
+    If removing an index would empty the list, then one remaining index is kept.
+
     :param graph: The graph to find terminals within
     :type graph: nx.Graph
     :param atoms: The list to remove atom indices from.
     :type atoms: List[int]
     """
     for atom_index in list(graph.nodes):
-        if len(graph[atom_index]) <= 1 and atom_index in atoms:
+        if len(graph[atom_index]) <= 1 and atom_index in atoms and len(atoms) > 1:
             atoms.remove(atom_index)
 
 

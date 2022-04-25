@@ -123,10 +123,12 @@ def _find_candidate_atom_constraints(
     candidates = []
     # Iterate over possibilities of neighbor being connected via any bond
     # or being any element
-    patterns = ATOM_PATTERNS[atom_element]
-    for neighbor_elements, neighbor_bond_orders in product(
-        none_iter(neighbor_elements), none_iter(neighbor_bond_orders)
+    for neighbor_elements, neighbor_bond_orders, element in product(
+        none_iter(neighbor_elements),
+        none_iter(neighbor_bond_orders),
+        (atom_element, None) if atom_element in ATOM_PATTERNS else (None,),
     ):
+        patterns = ATOM_PATTERNS[element]
         # Map (element, order) pairs to counts, and to list of indices
         neighbor_spec_to_count = defaultdict(lambda: 0)
         neighbor_spec_to_idxs = defaultdict(lambda: [])
