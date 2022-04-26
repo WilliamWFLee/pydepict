@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 import random
 from collections import defaultdict
 from copy import deepcopy
-from itertools import cycle, permutations, product
+from itertools import combinations, cycle, permutations, product
 from typing import Dict, Generator, List, Tuple
 
 import networkx as nx
@@ -42,7 +42,7 @@ __all__ = ["depict"]
 class _Constraints:
     """
     Implements an endpoint order-independent data structure
-    for storing chosen constraints.
+    for storing chosen constraints, with weights for each atom.
 
     Endpoints are ordered numerically when setting the constraint vector.
     Vectors are returned in the direction that corresponds with the order
@@ -51,6 +51,7 @@ class _Constraints:
 
     def __init__(self):
         self._dict: Dict[int, Dict[int, Vector]] = defaultdict(lambda: {})
+        self.weights: Dict[int, float] = {}
 
     @staticmethod
     def _sort_key(key: Tuple[int, int]) -> Tuple[Tuple[int, int], bool]:
@@ -119,16 +120,14 @@ def _find_candidate_atom_constraints(
         )
     )
     # TODO: "X" for halogens
+    patterns = ATOM_PATTERNS[atom_element]
     # Determine candidates
     candidates = []
     # Iterate over possibilities of neighbor being connected via any bond
     # or being any element
-    for neighbor_elements, neighbor_bond_orders, element in product(
-        none_iter(neighbor_elements),
-        none_iter(neighbor_bond_orders),
-        (atom_element, None) if atom_element in ATOM_PATTERNS else (None,),
+    for neighbor_elements, neighbor_bond_orders in product(
+        none_iter(neighbor_elements), none_iter(neighbor_bond_orders)
     ):
-        patterns = ATOM_PATTERNS[element]
         # Map (element, order) pairs to counts, and to list of indices
         neighbor_spec_to_count = defaultdict(lambda: 0)
         neighbor_spec_to_idxs = defaultdict(lambda: [])
@@ -305,11 +304,12 @@ def _sample_constraints(
         # Earlier constraint decision does not work with other constraints
         if not patterns or not weights:
             return False
-        (pattern,) = random.choices(patterns, weights)
+        ((pattern, weight),) = random.choices(list(zip(patterns, weights)), weights)
         # Delete constraints for current block from constraints
         del candidates_copy[block]
 
         for u, neighbor_constraints in zip(block, pattern):
+            sample.weights[u] = weight
             for v, vector in neighbor_constraints.items():
                 # Set vector in graph-wide constraints sample
                 sample[u, v] = vector
@@ -325,6 +325,10 @@ def _sample_constraints(
 def _apply_depiction_sample(
     graph: nx.Graph, constraints: _Constraints
 ) -> Dict[int, Vector]:
+    """
+    Applies constraints to a graph to produce a dictionary mapping atom index
+    to the position vector of that atom.
+    """
     coordinates = {0: Vector(0, 0)}
     for u, v in nx.dfs_edges(graph, source=0):
         coordinates[v] = coordinates[u] + constraints[u, v]
@@ -332,14 +336,36 @@ def _apply_depiction_sample(
     return coordinates
 
 
+def _congestion(sample: Dict[int, Vector], weights: Dict[int, float], graph: nx.Graph):
+    """
+    Calculates the congestion of the sample.
+    """
+    congestion = 0
+    for component in nx.connected_components(graph):
+        for u, v in combinations(component, 2):
+            if not graph.has_edge(u, v):
+                congestion += 1 / (
+                    Vector.distance(sample[u], sample[v]) ** 2
+                    * (weights[u] if u in weights else 1)
+                    * (weights[v] if v in weights else 1)
+                )
+
+    return congestion
+
+
 def _choose_best_sample(
-    coordinates_samples: List[Dict[int, Vector]]
+    coordinates_samples_with_weights: List[Tuple[Dict[int, Vector], Dict[int, float]]],
+    graph: nx.Graph,
 ) -> Dict[int, Vector]:
     """
-    Selects the best sample, and applies to the graph
+    Selects the best sample from a list of dictionaries of coordinate samples,
     """
-    # TODO: Actual best sample implementation
-    return coordinates_samples[0]
+    samples_with_congestion = [
+        (sample, _congestion(sample, weights, graph))
+        for sample, weights in coordinates_samples_with_weights
+    ]
+    best_sample, _ = min(samples_with_congestion, key=lambda x: x[1])
+    return best_sample
 
 
 def depict(graph: nx.Graph) -> None:
@@ -376,7 +402,7 @@ def depict(graph: nx.Graph) -> None:
         )
 
     # Produce constraint samples
-    samples = []
+    samples: List[_Constraints] = []
     for _ in range(SAMPLE_SIZE):
         sample = _Constraints()
         if _sample_constraints(sample, constraints_candidates):
@@ -384,7 +410,9 @@ def depict(graph: nx.Graph) -> None:
     if not samples:
         raise DepicterError("Could not satisfy constraints")
     # Convert constraints to Cartesian coordinates
-    coordinates_samples = [_apply_depiction_sample(graph, sample) for sample in samples]
-    best_sample = _choose_best_sample(coordinates_samples)
+    coordinates_samples_with_weights = [
+        (_apply_depiction_sample(graph, sample), sample.weights) for sample in samples
+    ]
+    best_sample = _choose_best_sample(coordinates_samples_with_weights, graph)
     for atom_index, coords in best_sample.items():
         set_depict_coords(atom_index, graph, coords)

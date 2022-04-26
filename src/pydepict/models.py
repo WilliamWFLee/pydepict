@@ -20,6 +20,14 @@ class Vector(NamedTuple):
     def from_tuple(cls, coords: Tuple[float, float]) -> "Vector":
         return cls(coords[0], coords[1])
 
+    @staticmethod
+    def distance(vector1: "Vector", vector2: "Vector") -> float:
+        """
+        Calculates the distance between two vectors as if they represented positions
+        from a fixed origin.
+        """
+        return sqrt((vector2.x - vector1.x) ** 2 + (vector2.y - vector1.y) ** 2)
+
     def normal(self) -> "Vector":
         """
         Calculates the normal to this vector.
