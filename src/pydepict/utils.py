@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 import datetime as dt
 from itertools import product
 from math import sqrt
-from typing import Iterable, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
@@ -266,6 +266,21 @@ def average_depicted_bond_length(graph: nx.Graph) -> float:
         return 0
     total_distance = sum(depicted_distance(u, v, graph) for u, v in graph.edges)
     return total_distance / len(graph.edges)
+
+
+def depiction_width(sample: Dict[int, Vector]) -> float:
+    """
+    Calculates the depicted width of a depiction sample,
+    calculated as the difference between the lowest and highest x coordinates.
+
+    :param sample: The depiction sample
+    :type sample: Dict[int, Vector]
+    :return: The depicted width
+    :rtype: float
+    """
+    min_x = min(vector.x for vector in sample.values())
+    max_x = max(vector.x for vector in sample.values())
+    return max_x - min_x
 
 
 def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:

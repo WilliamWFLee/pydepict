@@ -8,11 +8,12 @@ Constants for parsing, depicting and rendering
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+from cmath import pi
 from typing import Dict, List, Optional, Tuple, Union
 
 from .models import Vector
 
-# TYPE CONSTANTS
+# CUSTOM TYPES
 
 ChiralSpec = Optional[Tuple[Optional[str], int]]
 BondAttribute = Optional[Union[bool, str, int, float]]
@@ -43,6 +44,10 @@ ConstraintsCandidates = Dict[
 # GENERAL CHEMISTRY DATA
 
 HALOGENS = frozenset("F Cl Br I At".split())
+
+# GEOMETRY
+
+THIRTY_DEGREES = pi / 6
 
 # PARSER ELEMENT SYMBOLS
 
@@ -122,18 +127,18 @@ DEFAULT_BOND = {"order": 1}
 
 # DEPICTER VECTORS
 
-UUU = Vector(0, 1)
-RUU = Vector(1, 2).scale_to(1)
-RRU = Vector(2, 1).scale_to(1)
 RRR = Vector(1, 0)
-RRD = Vector(2, -1).scale_to(1)
-RDD = Vector(1, -2).scale_to(1)
-DDD = Vector(0, -1)
-LDD = Vector(-1, -2).scale_to(1)
-LLD = Vector(-2, -1).scale_to(1)
-LLL = Vector(-1, 0)
-LLU = Vector(-2, 1).scale_to(1)
-LUU = Vector(-1, 2).scale_to(1)
+RRU = Vector(1, 0).rotate(THIRTY_DEGREES)
+RUU = Vector(1, 0).rotate(THIRTY_DEGREES * 2)
+UUU = Vector(1, 0).rotate(THIRTY_DEGREES * 3)
+LUU = Vector(1, 0).rotate(THIRTY_DEGREES * 4)
+LLU = Vector(1, 0).rotate(THIRTY_DEGREES * 5)
+LLL = Vector(1, 0).rotate(THIRTY_DEGREES * 6)
+LLD = Vector(1, 0).rotate(THIRTY_DEGREES * 7)
+LDD = Vector(1, 0).rotate(THIRTY_DEGREES * 8)
+DDD = Vector(1, 0).rotate(THIRTY_DEGREES * 9)
+RDD = Vector(1, 0).rotate(THIRTY_DEGREES * 10)
+RRD = Vector(1, 0).rotate(THIRTY_DEGREES * 11)
 
 # DEPICTER CONSTRAINTS
 

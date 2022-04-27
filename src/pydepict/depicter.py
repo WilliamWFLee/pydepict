@@ -20,14 +20,16 @@ from .consts import (
     ATOM_PATTERNS,
     CHAIN_PATTERN_UNITS,
     SAMPLE_SIZE,
+    THIRTY_DEGREES,
     AtomPattern,
     ConstraintsCandidates,
     NeighborConstraints,
     NeighborSpec,
 )
 from .errors import DepicterError
-from .models import Vector
+from .models import Matrix, Vector
 from .utils import (
+    depiction_width,
     is_chain_atom,
     neighbors,
     none_iter,
@@ -113,6 +115,9 @@ def _find_candidate_atom_constraints(
     atom_element = graph.nodes(data="element")[atom_index]
     # Get neighbor data
     neighbors_idxs = tuple(graph[atom_index])
+    if not neighbors_idxs:
+        # Atom has no neighbors
+        return [({}, 1)]
     neighbor_elements, neighbor_bond_orders = zip(
         *(
             (graph.nodes[u]["element"], graph[u][atom_index]["order"])
@@ -360,12 +365,35 @@ def _choose_best_sample(
     """
     Selects the best sample from a list of dictionaries of coordinate samples,
     """
-    samples_with_congestion = [
-        (sample, _congestion(sample, weights, graph))
-        for sample, weights in coordinates_samples_with_weights
-    ]
-    best_sample, _ = min(samples_with_congestion, key=lambda x: x[1])
+    best_sample, _ = min(
+        coordinates_samples_with_weights,
+        key=lambda sample_with_weight: _congestion(
+            sample_with_weight[0], sample_with_weight[1], graph
+        ),
+    )
     return best_sample
+
+
+def _maximize_sample_width(sample: Dict[int, Vector]):
+    """
+    Rotates a depiction sample such that its width is maximized.
+    """
+    matrices = [Matrix.rotate(THIRTY_DEGREES * i) for i in range(12)]
+    widest_sample = max(
+        (
+            {atom_index: matrix * vector for atom_index, vector in sample.items()}
+            for matrix in matrices
+        ),
+        key=depiction_width,
+    )
+    sample.update(widest_sample)
+
+
+def _postprocess_sample(sample: Dict[int, Vector]):
+    """
+    Postprocesses a sample dictionary to produce the final depiction
+    """
+    _maximize_sample_width(sample)
 
 
 def depict(graph: nx.Graph) -> None:
@@ -414,5 +442,7 @@ def depict(graph: nx.Graph) -> None:
         (_apply_depiction_sample(graph, sample), sample.weights) for sample in samples
     ]
     best_sample = _choose_best_sample(coordinates_samples_with_weights, graph)
+    # Postprocess constraints
+    _postprocess_sample(best_sample)
     for atom_index, coords in best_sample.items():
         set_depict_coords(atom_index, graph, coords)
