@@ -19,6 +19,7 @@ import networkx as nx
 from .consts import (
     ATOM_PATTERNS,
     CHAIN_PATTERN_UNITS,
+    EPSILON,
     SAMPLE_SIZE,
     THIRTY_DEGREES,
     AtomPattern,
@@ -350,7 +351,7 @@ def _congestion(sample: Dict[int, Vector], weights: Dict[int, float], graph: nx.
         for u, v in combinations(component, 2):
             if not graph.has_edge(u, v):
                 congestion += 1 / (
-                    Vector.distance(sample[u], sample[v]) ** 2
+                    (Vector.distance(sample[u], sample[v]) + EPSILON) ** 2
                     * (weights[u] if u in weights else 1)
                     * (weights[v] if v in weights else 1)
                 )
