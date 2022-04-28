@@ -103,16 +103,16 @@ def _match_atom_pattern(
     )
 
 
-def _find_candidate_atom_constraints(
+def _find_atom_constraints(
     atom_index: int,
     graph: nx.Graph,
 ) -> List[Tuple[NeighborConstraints, float]]:
     """
-    Retrieves all possible candidate atom constraints
+    Retrieves all possible atom constraints
     for the atom with the specified index in the specified graph.
     """
     # Determines element of atom
-    atom_element = graph.nodes(data="element")[atom_index]
+    element = graph.nodes(data="element")[atom_index]
     # Get neighbor data
     neighbors_idxs = tuple(graph[atom_index])
     if not neighbors_idxs:
@@ -125,7 +125,7 @@ def _find_candidate_atom_constraints(
         )
     )
     # TODO: "X" for halogens
-    patterns = ATOM_PATTERNS[atom_element]
+    patterns = ATOM_PATTERNS[element if element in ATOM_PATTERNS else None]
     # Determine candidates
     candidates = []
     # Iterate over possibilities of neighbor being connected via any bond
@@ -419,7 +419,7 @@ def depict(graph: nx.Graph) -> None:
 
     # Determine atom constraints
     for atom_index in atoms:
-        patterns = _find_candidate_atom_constraints(atom_index, graph)
+        patterns = _find_atom_constraints(atom_index, graph)
         if not patterns:
             raise DepicterError(
                 f"No candidate constraints found for atom with index {atom_index}"
