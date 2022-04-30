@@ -8,8 +8,108 @@ Models for representing data.
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
+from collections import defaultdict
 from math import cos, sin, sqrt
-from typing import List, NamedTuple, Tuple
+from typing import Dict, Generic, Iterable, List, NamedTuple, Tuple, TypeVar
+
+T = TypeVar("T")
+
+
+class Stream(Generic[T]):
+    """
+    Stream class for allowing one-item peekahead.
+
+    .. attribute:: pos
+
+        The position within the iterable at which the stream is,
+        initially at 0.
+
+        :type: int
+    """
+
+    DEFAULT = object()
+
+    def __init__(self, content: Iterable[T]) -> None:
+        self._iter = iter(content)
+        self._peek = None
+        self.pos = 0
+
+    def __iter__(self) -> "Stream":
+        return self
+
+    def __next__(self) -> T:
+        next_ = self._peek if self._peek is not None else next(self._iter)
+        self._peek = None
+        self.pos += 1
+        return next_
+
+    def peek(self, default: T = DEFAULT) -> T:
+        """
+        Returns the next item in the stream without advancing the stream.
+
+        If stream is at end then return :param:`default`.
+
+        :param default: Value to return if stream is at end instead
+        :type: T
+        :return: The next item in the stream
+        :rtype: T
+        """
+        if self._peek is None:
+            try:
+                self._peek = next(self._iter)
+            except StopIteration:
+                if default != self.DEFAULT:
+                    return default
+                raise
+        return self._peek
+
+
+class DepictionConstraints:
+    """
+    Implements an endpoint order-independent data structure
+    for storing chosen constraints, with weights for each atom.
+
+    Endpoints are ordered numerically when setting the constraint vector.
+    Vectors are returned in the direction that corresponds with the order
+    that the endpoints are presented in.
+    """
+
+    def __init__(self):
+        self._dict: Dict[int, Dict[int, Vector]] = defaultdict(lambda: {})
+        self.weights: Dict[int, float] = {}
+
+    @staticmethod
+    def _sort_key(key: Tuple[int, int]) -> Tuple[Tuple[int, int], bool]:
+        u, v = key
+        if u > v:
+            return (v, u), True
+        return key, False
+
+    def __contains__(self, key: Tuple[int, int]) -> bool:
+        (u, v), _ = self._sort_key(key)
+        return u in self._dict and v in self._dict[u]
+
+    def __getitem__(self, key: Tuple[int, int]) -> "Vector":
+        (u, v), flipped = self._sort_key(key)
+        if self.__contains__((u, v)):
+            return -self._dict[u][v] if flipped else self._dict[u][v]
+        raise KeyError(key)
+
+    def __setitem__(self, key: Tuple[int, int], value: "Vector"):
+        (u, v), flipped = self._sort_key(key)
+        self._dict[u][v] = -value if flipped else value
+
+    def __delitem__(self, key: Tuple[int, int]):
+        (u, v), _ = self._sort_key(key)
+        if self.__contains__((u, v)):
+            del self._dict[u][v]
+        raise KeyError(key)
+
+    def clear(self):
+        """
+        Clears all constraints
+        """
+        self._dict.clear()
 
 
 class Matrix:
@@ -147,7 +247,7 @@ class Vector(NamedTuple):
         return self.__class__(-self.x, self.y)
 
     def __abs__(self) -> float:
-        return sqrt(self.x ** 2 + self.y ** 2)
+        return sqrt(self.x**2 + self.y**2)
 
     def __add__(self, other: "Vector") -> "Vector":
         """

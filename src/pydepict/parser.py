@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 import string
 import warnings
 from functools import wraps
-from typing import Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Iterable, List, Optional, Tuple, Type, TypeVar, Union
 
 import networkx as nx
 
@@ -38,64 +38,16 @@ from .consts import (
     Rnums,
 )
 from .errors import ParserError, ParserWarning
+from .models import Stream
 from .utils import atom_valence, is_allenal_center
 
-__all__ = ["Stream", "parse"]
+__all__ = ["parse"]
 
 T = TypeVar("T")
 E = TypeVar("E", Type[ParserError], Type[ParserWarning])
 
 # Sentinel object
 EXPECT_DEFAULT = object()
-
-
-class Stream(Generic[T]):
-    """
-    Stream class for allowing one-item peekahead.
-
-    .. attribute:: pos
-
-        The position within the iterable at which the stream is,
-        initially at 0.
-
-        :type: int
-    """
-
-    DEFAULT = object()
-
-    def __init__(self, content: Iterable[T]) -> None:
-        self._iter = iter(content)
-        self._peek = None
-        self.pos = 0
-
-    def __iter__(self) -> "Stream":
-        return self
-
-    def __next__(self) -> T:
-        next_ = self._peek if self._peek is not None else next(self._iter)
-        self._peek = None
-        self.pos += 1
-        return next_
-
-    def peek(self, default: T = DEFAULT) -> T:
-        """
-        Returns the next item in the stream without advancing the stream.
-
-        If stream is at end then return :param:`default`.
-
-        :param default: Value to return if stream is at end instead
-        :type: T
-        :return: The next item in the stream
-        :rtype: T
-        """
-        if self._peek is None:
-            try:
-                self._peek = next(self._iter)
-            except StopIteration:
-                if default != self.DEFAULT:
-                    return default
-                raise
-        return self._peek
 
 
 def fill_hydrogens(graph: nx.Graph):

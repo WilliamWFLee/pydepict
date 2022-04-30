@@ -28,7 +28,7 @@ from .consts import (
     NeighborSpec,
 )
 from .errors import DepicterError
-from .models import Matrix, Vector
+from .models import Matrix, Vector, DepictionConstraints
 from .utils import (
     depiction_width,
     is_chain_atom,
@@ -40,54 +40,6 @@ from .utils import (
 )
 
 __all__ = ["depict"]
-
-
-class _Constraints:
-    """
-    Implements an endpoint order-independent data structure
-    for storing chosen constraints, with weights for each atom.
-
-    Endpoints are ordered numerically when setting the constraint vector.
-    Vectors are returned in the direction that corresponds with the order
-    that the endpoints are presented in.
-    """
-
-    def __init__(self):
-        self._dict: Dict[int, Dict[int, Vector]] = defaultdict(lambda: {})
-        self.weights: Dict[int, float] = {}
-
-    @staticmethod
-    def _sort_key(key: Tuple[int, int]) -> Tuple[Tuple[int, int], bool]:
-        u, v = key
-        if u > v:
-            return (v, u), True
-        return key, False
-
-    def __contains__(self, key: Tuple[int, int]) -> bool:
-        (u, v), _ = self._sort_key(key)
-        return u in self._dict and v in self._dict[u]
-
-    def __getitem__(self, key: Tuple[int, int]) -> Vector:
-        (u, v), flipped = self._sort_key(key)
-        if self.__contains__((u, v)):
-            return -self._dict[u][v] if flipped else self._dict[u][v]
-        raise KeyError(key)
-
-    def __setitem__(self, key: Tuple[int, int], value: Vector):
-        (u, v), flipped = self._sort_key(key)
-        self._dict[u][v] = -value if flipped else value
-
-    def __delitem__(self, key: Tuple[int, int]):
-        (u, v), _ = self._sort_key(key)
-        if self.__contains__((u, v)):
-            del self._dict[u][v]
-        raise KeyError(key)
-
-    def clear(self):
-        """
-        Clears all constraints
-        """
-        self._dict.clear()
 
 
 def _match_atom_pattern(
@@ -294,7 +246,7 @@ def _remove_conflicting_constraints(
 
 
 def _sample_constraints(
-    sample: _Constraints,
+    sample: DepictionConstraints,
     constraints_candidates: ConstraintsCandidates,
 ) -> None:
     """
@@ -329,7 +281,7 @@ def _sample_constraints(
 
 
 def _apply_depiction_sample(
-    graph: nx.Graph, constraints: _Constraints
+    graph: nx.Graph, constraints: DepictionConstraints
 ) -> Dict[int, Vector]:
     """
     Applies constraints to a graph to produce a dictionary mapping atom index
@@ -431,9 +383,9 @@ def depict(graph: nx.Graph) -> None:
         )
 
     # Produce constraint samples
-    samples: List[_Constraints] = []
+    samples: List[DepictionConstraints] = []
     for _ in range(SAMPLE_SIZE):
-        sample = _Constraints()
+        sample = DepictionConstraints()
         if _sample_constraints(sample, constraints_candidates):
             samples.append(sample)
     if not samples:
