@@ -14,6 +14,8 @@ from typing import Dict, Generic, Iterable, List, NamedTuple, Tuple, TypeVar
 
 T = TypeVar("T")
 
+__all__ = ["Stream", "Matrix", "Vector"]
+
 
 class Stream(Generic[T]):
     """
