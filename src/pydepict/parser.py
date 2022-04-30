@@ -106,24 +106,24 @@ def fill_hydrogens(graph: nx.Graph):
     :param graph: The graph to fill hydrogens for.
     :type graph: nx.Graph
     """
-    for atom_index, hcount in graph.nodes(data="hcount"):
-        if hcount is None:
-            element = hcount["element"]
+    for atom_index, attrs in graph.nodes(data=True):
+        if attrs["hcount"] is None:
+            element = attrs["element"]
             # Get all "normal" valences for the current atom
             element_valences = VALENCES[element]
             if element_valences is None:
                 continue
             current_valence = atom_valence(atom_index, graph)
             # Possible valences must be at least the current valence of the atom
-            possible_valencies = list(
+            possible_valences = list(
                 filter(lambda x: x >= current_valence, element_valences)
             )
-            if not possible_valencies:
+            if not possible_valences:
                 # Hydrogen count is 0 if current valence
                 # is already higher than any known valence
-                graph.nodes[atom_index]["hcount"] = 0
-            target_valence = min(possible_valencies)
-            graph.nodes[atom_index]["hcount"] = target_valence - current_valence
+                attrs["hcount"] = 0
+            target_valence = min(possible_valences)
+            attrs["hcount"] = target_valence - current_valence
 
 
 def imply_shorthand_chirality(graph: nx.Graph):
