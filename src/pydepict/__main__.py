@@ -11,13 +11,10 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 import argparse
 import traceback
-from tkinter import Tk, Event
+from tkinter import Event, Tk
 from tkinter.ttk import Button, Entry, Frame, Label
 
-from . import show
-from .depicter import depict
-from .parser import parse
-from .renderer import Renderer
+from . import Renderer, depict, parse, show
 
 PADDING = 10
 

@@ -13,7 +13,7 @@ from typing import NamedTuple, Optional
 
 from .depicter import depict
 from .parser import parse
-from .renderer import render
+from .renderer import Renderer, render
 
 __all__ = [
     "__author__",
