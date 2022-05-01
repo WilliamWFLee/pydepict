@@ -12,15 +12,6 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 from typing import Optional
 
 
-class ParserStateException(Exception):
-    """
-    Error class used when a parser operation is used
-    and the parser is not in a state it is permitted to be used in.
-    """
-
-    pass
-
-
 class ParserError(Exception):
     """
     Error class for all errors that occur when parsing input
