@@ -28,7 +28,7 @@ from .consts import (
     NeighborSpec,
 )
 from .errors import DepicterError
-from .models import Matrix, Vector, DepictionConstraints
+from .models import DepictionConstraints, Matrix, Vector
 from .utils import (
     depiction_width,
     is_chain_atom,
