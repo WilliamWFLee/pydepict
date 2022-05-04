@@ -8,7 +8,7 @@ Constants for parsing, depicting and rendering
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
 """
 
-from cmath import pi
+from math import pi
 from typing import Dict, List, Optional, Tuple, Union
 
 from .models import Vector
