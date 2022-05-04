@@ -134,8 +134,5 @@ dmypy.json
 .vscode/
 .idea/
 
-# LaTeX
-latex/
-
 # Renderer screenshots
 screenshots/
