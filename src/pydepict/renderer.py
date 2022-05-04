@@ -67,10 +67,11 @@ class Renderer:
         :type: bool
     """
 
-    def __init__(self, graph: Optional[nx.Graph] = None):
+    def __init__(self, graph: Optional[nx.Graph] = None, title: Optional[str] = None):
         self._display_lock = RLock()
         self.redraw = False  # XXX: Must be before setting graph
         self.graph = graph
+        self.title = title
         self._thread = None
         self._event_cbs = defaultdict(lambda: set())
 
@@ -105,6 +106,22 @@ class Renderer:
         self._graph = graph
         self._calculate_geometry()
         self.redraw = True
+
+    @property
+    def title(self) -> str:
+        """
+        The title to be displayed in the renderer window.
+
+        Setting this property changes the title shown by the window manager.
+        """
+        return self._title
+
+    @title.setter
+    def title(self, title: Optional[str] = None):
+        self._title = title
+        pygame.display.set_caption(
+            (f"{self._title} - " if self._title is not None else "") + WINDOW_TITLE
+        )
 
     def _calculate_geometry(self):
         # Calculates display coordinates for atoms in the graph,
@@ -150,7 +167,6 @@ class Renderer:
             self._display = pygame.display.set_mode(
                 (max_rx + FRAME_MARGIN, max_ry + FRAME_MARGIN)
             )
-            pygame.display.set_caption(WINDOW_TITLE)
 
     def _display_atom(self, atom_index: int) -> bool:
         """
@@ -316,7 +332,7 @@ class Renderer:
             self._thread.join()
 
 
-def render(graph: nx.Graph, blocking: bool = True):
+def render(graph: nx.Graph, *, title: Optional[str] = None, blocking: bool = True):
     """
     Shortcut for using :class:`Renderer`. Equivalent to::
         renderer = Renderer(graph)
@@ -324,9 +340,11 @@ def render(graph: nx.Graph, blocking: bool = True):
 
     :param graph: The graph to render
     :type graph: nx.Graph
+    :param title: The title to display in the renderer window, defaults to :data:`None`
+    :type title: str
     :param blocking: Whether the renderer blocks the current thread,
                      defaults to :data:`True`
     :type blocking: bool
     """
-    renderer = Renderer(graph)
+    renderer = Renderer(graph, title)
     renderer.show(blocking)

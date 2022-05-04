@@ -54,7 +54,7 @@ def show(smiles: str):
     """
     graph, _ = parse(smiles)
     depict(graph)
-    render(graph)
+    render(graph, title=smiles)
 
 
 # Clean up namespace

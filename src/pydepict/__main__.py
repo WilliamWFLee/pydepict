@@ -72,6 +72,7 @@ class Program:
             graph, _ = parse(smiles)
             depict(graph)
             self.renderer.graph = graph
+            self.renderer.title = smiles
         except Exception as e:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")
             traceback.print_exc()
