@@ -10,7 +10,17 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from collections import defaultdict
 from math import cos, sin, sqrt
-from typing import Dict, Generic, Iterable, List, NamedTuple, Tuple, TypeVar
+from typing import (
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    NamedTuple,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 T = TypeVar("T")
 
@@ -176,7 +186,52 @@ class Vector(NamedTuple):
 
     @classmethod
     def from_tuple(cls, coords: Tuple[float, float]) -> "Vector":
-        return cls(coords[0], coords[1])
+        return cls(*coords)
+
+    @classmethod
+    def _minmax_all(
+        cls, vectors: Iterable["Vector"], func: Literal["min", "max"]
+    ) -> "Vector":
+        if func == "min":
+            function = min
+        elif func == "max":
+            function = max
+        else:
+            raise ValueError("func must be 'max' or 'min'")
+        all_vectors = [vector for vector in vectors]
+
+        folded_x = function((vector.x for vector in all_vectors), default=0)
+        folded_y = function((vector.y for vector in all_vectors), default=0)
+
+        return cls(folded_x, folded_y)
+
+    @classmethod
+    def max_all(cls, vectors: Iterable["Vector"]) -> "Vector":
+        """
+        Calculates the vector that has the maximum value of each component
+        in the iterable of vectors provided.
+
+        :param vectors: An iterable of vectors
+        :type vectors: Iterable[Vector]
+        :return: The vector where each component has the maximum for that component
+        :rtype: Vector
+        """
+
+        return cls._minmax_all(vectors, "max")
+
+    @classmethod
+    def min_all(cls, vectors: Iterable["Vector"]) -> "Vector":
+        """
+        Calculates the vector that has the minimum value of each component
+        in the iterable of vectors provided.
+
+        :param vectors: An iterable of vectors
+        :type vectors: Iterable[Vector]
+        :return: The vector where each component has the minimum for that component
+        :rtype: Vector
+        """
+
+        return cls._minmax_all(vectors, "min")
 
     @staticmethod
     def distance(vector1: "Vector", vector2: "Vector") -> float:
@@ -267,11 +322,15 @@ class Vector(NamedTuple):
             return self.__class__(self.x - other.x, self.y - other.y)
         return NotImplemented
 
-    def __mul__(self, scalar: float) -> "Vector":
-        return self.__class__(self.x * scalar, self.y * scalar)
+    def __mul__(self, other: Union[float, "Vector"]) -> "Vector":
+        if isinstance(other, (float, int)):
+            return self.__class__(self.x * other, self.y * other)
+        elif isinstance(other, self.__class__):
+            # Component-wise multiplication
+            return self.__class__(self.x * other.x, self.y * other.y)
 
-    def __rmul__(self, scalar: float) -> "Vector":
-        return self.__mul__(scalar)
+    def __rmul__(self, other: Union[float, "Vector"]) -> "Vector":
+        return self.__mul__(other)
 
     def __neg__(self) -> "Vector":
         return self.__mul__(-1)

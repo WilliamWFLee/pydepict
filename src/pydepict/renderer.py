@@ -136,36 +136,35 @@ class Renderer:
 
             # Invert y-coordinate as graphics origin is in top-left hand corner
             for atom_index in self.graph.nodes:
-                self._graph.nodes[atom_index]["dy"] *= -1
+                self._graph.nodes[atom_index]["d_coords"] *= Vector(1, -1)
 
             # Normalises depiction coordinates to be non-negative
-            min_dx = min((n[1] for n in self._graph.nodes(data="dx")), default=0)
-            min_dy = min((n[1] for n in self._graph.nodes(data="dy")), default=0)
+            min_all_depict_vector = Vector.min_all(
+                vector for _, vector in self._graph.nodes(data="d_coords")
+            )
             for atom_index in self._graph.nodes:
-                self._graph.nodes[atom_index]["dx"] -= min_dx
-                self._graph.nodes[atom_index]["dy"] -= min_dy
+                self._graph.nodes[atom_index]["d_coords"] -= min_all_depict_vector
 
             # Calculates display coordinates, adding margin
             for atom_index in self._graph.nodes:
                 set_render_coords(
                     atom_index,
                     self._graph,
-                    Vector(
-                        *(
-                            v * scale_factor + FRAME_MARGIN
-                            for v in get_depict_coords(atom_index, self._graph)
-                        )
+                    (
+                        scale_factor * get_depict_coords(atom_index, self._graph)
+                        + Vector(FRAME_MARGIN, FRAME_MARGIN)
                     ),
                 )
 
             # Calculates display size
-            max_rx = max((n[1] for n in self._graph.nodes(data="rx")), default=0)
-            max_ry = max((n[1] for n in self._graph.nodes(data="ry")), default=0)
+            max_all_render_vector = Vector.max_all(
+                vector for _, vector in self._graph.nodes(data="r_coords")
+            )
         else:
-            max_rx = max_ry = 0
+            max_all_render_vector = Vector(0, 0)
         with self._display_lock:
             self._display = pygame.display.set_mode(
-                (max_rx + FRAME_MARGIN, max_ry + FRAME_MARGIN)
+                max_all_render_vector + Vector(FRAME_MARGIN, FRAME_MARGIN)
             )
 
     def _display_atom(self, atom_index: int) -> bool:

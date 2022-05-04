@@ -10,7 +10,6 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 import datetime as dt
 from itertools import product
-from math import sqrt
 from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
@@ -244,9 +243,10 @@ def depicted_distance(u: int, v: int, graph: nx.Graph) -> float:
     :return: The distance between the two atoms
     :rtype: float
     """
-    ux, uy = get_atom_attrs(u, graph, "dx", "dy")
-    vx, vy = get_atom_attrs(v, graph, "dx", "dy")
-    return sqrt((vx - ux) ** 2 + (vy - uy) ** 2)
+    coords1 = get_atom_attrs(u, graph, "d_coords")
+    coords2 = get_atom_attrs(v, graph, "d_coords")
+
+    return Vector.distance(coords1, coords2)
 
 
 def average_depicted_bond_length(graph: nx.Graph) -> float:
@@ -295,8 +295,7 @@ def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The depiction coordinates for the specified atom
     :rtype: Vector
     """
-    x, y = get_atom_attrs(atom_index, graph, "dx", "dy")
-    return Vector(x, y)
+    return get_atom_attrs(atom_index, graph, "d_coords")
 
 
 def set_depict_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
@@ -311,8 +310,7 @@ def set_depict_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
     :param coords: The depiction coordinates to set for the specified atom
     :type coords: Vector
     """
-    graph.nodes[atom_index]["dx"] = coords.x
-    graph.nodes[atom_index]["dy"] = coords.y
+    graph.nodes[atom_index]["d_coords"] = coords
 
 
 def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
@@ -327,9 +325,7 @@ def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
     :return: The display coordinates for the specified atom
     :rtype: Vector
     """
-    x, y = get_atom_attrs(atom_index, graph, "rx", "ry")
-
-    return Vector(x, y)
+    return get_atom_attrs(atom_index, graph, "r_coords")
 
 
 def set_render_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
@@ -344,8 +340,7 @@ def set_render_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
     :param coords: The render coordinates to set for the specified atom
     :type coords: Vector
     """
-    graph.nodes[atom_index]["rx"] = coords.x
-    graph.nodes[atom_index]["ry"] = coords.y
+    graph.nodes[atom_index]["r_coords"] = coords
 
 
 def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:
