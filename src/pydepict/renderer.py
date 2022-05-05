@@ -364,12 +364,13 @@ def render(
     positions: GraphCoordinates,
     *,
     title: Optional[str] = None,
-    blocking: bool = True,
 ):
     """
     Shortcut for using :class:`Renderer`. Equivalent to::
-        renderer = Renderer(graph, positions, title)
-        renderer.show(blocking)
+        renderer = Renderer(graph, positions, title=title)
+        renderer.show()
+
+    This function blocks the current thread until the renderer window is closed.
 
     :param graph: The graph to render
     :type graph: nx.Graph
@@ -377,9 +378,6 @@ def render(
     :type: GraphCoordinates
     :param title: The title to display in the renderer window, defaults to :data:`None`
     :type title: str
-    :param blocking: Whether the renderer blocks the current thread,
-                     defaults to :data:`True`
-    :type blocking: bool
     """
     renderer = Renderer(graph, positions, title=title)
-    renderer.show(blocking)
+    renderer.show()
