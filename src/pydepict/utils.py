@@ -14,7 +14,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
-from .consts import CHAIN_ELEMENTS, AtomAttribute, BondAttribute
+from .consts import CHAIN_ELEMENTS, AtomAttribute, BondAttribute, GraphCoordinates
 from .models import Vector
 
 __all__ = [
@@ -23,9 +23,6 @@ __all__ = [
     "is_allenal_center",
     "depicted_distance",
     "average_depicted_bond_length",
-    "get_depict_coords",
-    "get_render_coords",
-    "set_render_coords",
     "none_iter",
 ]
 
@@ -230,7 +227,7 @@ def is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
     )
 
 
-def depicted_distance(u: int, v: int, graph: nx.Graph) -> float:
+def depicted_distance(u: int, v: int, positions: GraphCoordinates) -> float:
     """
     Calculates the depicted distance between two atoms in a molecule graph.
 
@@ -238,18 +235,17 @@ def depicted_distance(u: int, v: int, graph: nx.Graph) -> float:
     :type u: int
     :param v: The index of the other atom
     :type v: int
-    :param graph: The graph to look in to find the atom data
-    :type graph: nx.Graph
+    :param positions: The dictionary of depiction coordinates
+    :type positions: GraphCoordinates
     :return: The distance between the two atoms
     :rtype: float
     """
-    coords1 = get_atom_attrs(u, graph, "d_coords")
-    coords2 = get_atom_attrs(v, graph, "d_coords")
+    coords1, coords2 = positions[u], positions[v]
 
     return Vector.distance(coords1, coords2)
 
 
-def average_depicted_bond_length(graph: nx.Graph) -> float:
+def average_depicted_bond_length(graph: nx.Graph, positions: GraphCoordinates) -> float:
     """
     Calculates the average length of the representation of bonds
     in a graph that has depiction coordinates.
@@ -259,12 +255,14 @@ def average_depicted_bond_length(graph: nx.Graph) -> float:
 
     :param graph: The graph to calculate the average bond length for
     :type graph: nx.Graph
+    :param positions: The dictionary of depiction coordinates
+    :type positions: GraphCoordinates
     :return: The average bond length in the graph, which is 0 if the graph has no edges
     :rtype: float
     """
     if not graph.edges:
         return 0
-    total_distance = sum(depicted_distance(u, v, graph) for u, v in graph.edges)
+    total_distance = sum(depicted_distance(u, v, positions) for u, v in graph.edges)
     return total_distance / len(graph.edges)
 
 
@@ -281,66 +279,6 @@ def depiction_width(sample: Dict[int, Vector]) -> float:
     min_x = min(vector.x for vector in sample.values())
     max_x = max(vector.x for vector in sample.values())
     return max_x - min_x
-
-
-def get_depict_coords(atom_index: int, graph: nx.Graph) -> Vector:
-    """
-    Gets depiction coordinates for the atom with the specified index
-    in the specified graph.
-
-    :param atom_index: The index of the atom to fetch coordinates for.
-    :type atom_index: int
-    :param graph: The graph to look for the atom in
-    :type atom_index: int
-    :return: The depiction coordinates for the specified atom
-    :rtype: Vector
-    """
-    return get_atom_attrs(atom_index, graph, "d_coords")
-
-
-def set_depict_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
-    """
-    Sets depiction coordinates for the atom with the specified index
-    in the specified graph.
-
-    :param atom_index: The index of the atom to set coordinates for.
-    :type atom_index: int
-    :param graph: The graph to look for the atom in
-    :type graph: nx.Graph
-    :param coords: The depiction coordinates to set for the specified atom
-    :type coords: Vector
-    """
-    graph.nodes[atom_index]["d_coords"] = coords
-
-
-def get_render_coords(atom_index: int, graph: nx.Graph) -> Vector:
-    """
-    Gets render coordinates for the atom with the specified index
-    in the specified graph.
-
-    :param atom_index: The index of the atom to fetch coordinates for.
-    :type atom_index: int
-    :param graph: The graph to look for the atom in
-    :type atom_index: int
-    :return: The display coordinates for the specified atom
-    :rtype: Vector
-    """
-    return get_atom_attrs(atom_index, graph, "r_coords")
-
-
-def set_render_coords(atom_index: int, graph: nx.Graph, coords: Vector) -> None:
-    """
-    Sets render coordinates for the atom with the specified index
-    in the specified graph.
-
-    :param atom_index: The index of the atom to set coordinates for.
-    :type atom_index: int
-    :param graph: The graph to look for the atom in
-    :type graph: nx.Graph
-    :param coords: The render coordinates to set for the specified atom
-    :type coords: Vector
-    """
-    graph.nodes[atom_index]["r_coords"] = coords
 
 
 def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:

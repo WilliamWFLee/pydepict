@@ -70,8 +70,8 @@ class Program:
         smiles = self.smiles_input.get()
         try:
             graph, _ = parse(smiles)
-            depict(graph)
-            self.renderer.graph = graph
+            positions = depict(graph)
+            self.renderer.set_structure(graph, positions)
             self.renderer.title = smiles
         except Exception as e:
             self.error_message.config(text=f"{e.__class__.__name__}: {str(e)}")

@@ -7,43 +7,61 @@ Script for displaying test molecules for development purposes
 """
 
 import time
+from typing import Tuple
+
 import networkx as nx
 import pytest
 
+from pydepict.consts import GraphCoordinates
+from pydepict.models import Vector
 from pydepict.renderer import Renderer
 
 
 @pytest.fixture
-def graph1():
-    g = nx.Graph()
-    g.add_node(0, element="C", dx=0, dy=0)
-    g.add_node(1, element="C", dx=1, dy=1)
-    g.add_node(2, element="O", dx=2, dy=0)
-    g.add_edge(0, 1, order=1)
-    g.add_edge(1, 2, order=1)
+def structure1() -> Tuple[nx.Graph, GraphCoordinates]:
+    graph = nx.Graph()
+    graph.add_node(0, element="C")
+    graph.add_node(1, element="C")
+    graph.add_node(2, element="O")
+    graph.add_edge(0, 1, order=1)
+    graph.add_edge(1, 2, order=1)
 
-    return g
+    positions = {
+        0: Vector(0, 0),
+        1: Vector(1, 1),
+        2: Vector(2, 0),
+    }
+
+    return graph, positions
 
 
 @pytest.fixture
-def graph2():
-    g = nx.Graph()
-    g.add_node(0, element="C", dx=0, dy=0)
-    g.add_node(1, element="C", dx=-1, dy=1)
-    g.add_edge(0, 1, order=1)
+def structure2() -> Tuple[nx.Graph, GraphCoordinates]:
+    graph = nx.Graph()
+    graph.add_node(0, element="C")
+    graph.add_node(1, element="C")
+    graph.add_edge(0, 1, order=1)
 
-    return g
+    positions = {
+        0: Vector(0, 0),
+        1: Vector(-1, 1),
+    }
+
+    return graph, positions
 
 
-def test_blocking_renderer(graph1: nx.Graph):
-    renderer = Renderer(graph1)
+def test_blocking_renderer(structure1: Tuple[nx.Graph, GraphCoordinates]):
+    renderer = Renderer(*structure1)
     renderer.show()
 
 
-def test_nonblocking_renderer(graph1: nx.Graph, graph2: nx.Graph):
-    renderer = Renderer(graph1)
+def test_nonblocking_renderer(
+    structure1: Tuple[nx.Graph, GraphCoordinates],
+    structure2: Tuple[nx.Graph, GraphCoordinates],
+):
+    renderer = Renderer(*structure1)
     renderer.show(False)
     time.sleep(3)
-    renderer.graph = graph2
+    renderer.set_structure(*structure2)
     time.sleep(3)
     renderer.close()

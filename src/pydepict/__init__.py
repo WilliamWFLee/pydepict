@@ -53,8 +53,8 @@ def show(smiles: str):
     :type smiles: str
     """
     graph, _ = parse(smiles)
-    depict(graph)
-    render(graph, title=smiles)
+    positions = depict(graph)
+    render(graph, positions, title=smiles)
 
 
 # Clean up namespace

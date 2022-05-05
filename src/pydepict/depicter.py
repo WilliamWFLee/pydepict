@@ -24,6 +24,7 @@ from .consts import (
     THIRTY_DEGREES,
     AtomPattern,
     ConstraintsCandidates,
+    GraphCoordinates,
     NeighborConstraints,
     NeighborSpec,
 )
@@ -36,7 +37,6 @@ from .utils import (
     none_iter,
     prune_hydrogens,
     prune_terminals,
-    set_depict_coords,
 )
 
 __all__ = ["depict"]
@@ -342,22 +342,21 @@ def _maximize_sample_width(sample: Dict[int, Vector]):
     sample.update(widest_sample)
 
 
-def _postprocess_sample(sample: Dict[int, Vector]):
+def _postprocess_sample(sample: GraphCoordinates):
     """
     Postprocesses a sample dictionary to produce the final depiction
     """
     _maximize_sample_width(sample)
 
 
-def depict(graph: nx.Graph) -> None:
+def depict(graph: nx.Graph) -> GraphCoordinates:
     """
-    Determines depiction coordinates for the graph.
-
-    Adds to atom attributes to the graph *in-place*,
-    thus changing the original input graph to include depiction coordinates.
+    Determines depiction coordinates for the graph, and returns them.
 
     :param graph: The graph to calculate depiction coordinates for.
     :type graph: nx.Graph
+    :return: A dictionary mapping atom index to position vector
+    :rtype: GraphCoordinates
     """
     # Makes list of non-hydrogen, non-terminal atoms in the graph
     atoms: List[int] = list(graph.nodes)
@@ -397,5 +396,4 @@ def depict(graph: nx.Graph) -> None:
     best_sample = _choose_best_sample(coordinates_samples_with_weights, graph)
     # Postprocess constraints
     _postprocess_sample(best_sample)
-    for atom_index, coords in best_sample.items():
-        set_depict_coords(atom_index, graph, coords)
+    return best_sample

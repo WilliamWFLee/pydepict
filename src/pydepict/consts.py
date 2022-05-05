@@ -32,6 +32,7 @@ AtomPattern = List[
     ]
 ]
 NeighborConstraints = Dict[int, Vector]
+GraphCoordinates = Dict[int, Vector]
 ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
 ConstraintsCandidates = Dict[
     Tuple[int],

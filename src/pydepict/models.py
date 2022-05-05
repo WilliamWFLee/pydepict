@@ -303,6 +303,15 @@ class Vector(NamedTuple):
         """
         return self.__class__(-self.x, self.y)
 
+    def copy(self) -> "Vector":
+        """
+        Returns a copy of this vector.
+
+        :return: A copy of this vector
+        :rtype: Vector
+        """
+        return self.__class__(self.x, self.y)
+
     def __abs__(self) -> float:
         return sqrt(self.x**2 + self.y**2)
 
