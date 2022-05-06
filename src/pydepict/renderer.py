@@ -84,6 +84,13 @@ class Renderer:
         self._event_cbs = defaultdict(lambda: set())
         self.set_structure(graph, positions)
 
+    def __enter__(self) -> "Renderer":
+        self.show(False)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_cb):
+        self.close()
+
     def _with_display_lock(meth):
         """
         Decorator for methods that acquires the display lock

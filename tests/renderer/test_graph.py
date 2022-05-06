@@ -59,9 +59,7 @@ def test_nonblocking_renderer(
     structure1: Tuple[nx.Graph, GraphCoordinates],
     structure2: Tuple[nx.Graph, GraphCoordinates],
 ):
-    renderer = Renderer(*structure1)
-    renderer.show(False)
-    time.sleep(3)
-    renderer.set_structure(*structure2)
-    time.sleep(3)
-    renderer.close()
+    with Renderer(*structure1) as renderer:
+        time.sleep(3)
+        renderer.set_structure(*structure2)
+        time.sleep(3)
