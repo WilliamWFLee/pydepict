@@ -330,7 +330,7 @@ class Renderer:
         :param event: The name of the event to bind a callback for
         :type event: str
         :param func: The callback function to add.
-        :type func: Callable[[]]
+        :type func: Callable[[], Any]
         """
         self._event_cbs[event].add(func)
 
@@ -344,7 +344,7 @@ class Renderer:
         :param event: The name of the event to remove
         :type event: str
         :param func: The callback function to remove.
-        :type func: Callable[[]]
+        :type func: Callable[[], Any]
         """
         if func in self._event_cbs[event]:
             self._event_cbs[event].remove(func)
