@@ -15,6 +15,76 @@ pydepict requires **Python 3.7 or newer**, and uses the following packages:
 
 Specific versions of these libraries can be found in ``requirements.txt``.
 
+Setup
+-----
+
+The recommended method of installation is via ``pip``, which installs pydepict as a package:
+
+.. code-block:: sh
+
+    python3 -m pip install pydepict
+
+Use ``py -3`` instead of ``python3`` if you are on Windows.
+
+Using ``pip`` installs the latest release of pydepict. Alternatively, if you want the latest development version, then you can clone the repository from GitHub:
+
+.. code-block:: sh
+
+    git clone https://github.com/WilliamWFLee/pydepict
+    cd pydepict
+
+If you want to run the program straight from the cloned repository then you must install pydepict's package requirements using ``pip``:
+
+.. code-block:: sh
+
+    python3 -m pip install -r requirements.txt
+
+Or to install the development version as a package:
+
+.. code-block:: sh
+
+    python3 -m pip install .
+
+Usage
+-----
+
+If you have installed pydepict as a package, then you can run the program by simply running:
+
+.. code-block:: sh
+
+    pydepict
+
+Or you can invoke the module as a program:
+
+.. code-block:: sh
+
+    python3 -m pydepict
+
+If you want to run the program straight from the cloned repository, then you can execute the script ``src/main.py``:
+
+.. code-block:: sh
+
+    python3 src/main.py
+
+Executing the program without any command-line arguments opens a GUI allowing SMILES string input. Passing a SMILES string as the first command-line argument only displays the renderer window showing only the corresponding diagram. For example:
+
+.. code-block:: sh
+
+    python3 src/main.py CCO
+
+parses the SMILES string ``CCO`` and displays the corresponding diagram.
+
+Minimal Code Example
+--------------------
+
+.. code-block::
+
+    from pydepict import depict, parse, render
+
+    graph = parse(input("Enter your SMILES string: "))
+    positions = depict(graph)
+    render(graph, positions)
+
 License
 -------
 
