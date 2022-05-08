@@ -203,7 +203,9 @@ class Renderer:
         else:
             self.render_positions = None
             max_all_render_vector = Vector(0, 0)
-        self.display_size = max_all_render_vector + Vector(FRAME_MARGIN, FRAME_MARGIN)
+        self.display_size = tuple(
+            max_all_render_vector + Vector(FRAME_MARGIN, FRAME_MARGIN)
+        )
 
     def _display_atom(self, atom_index: int) -> bool:
         """
