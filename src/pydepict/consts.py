@@ -25,14 +25,9 @@ Rnum = Tuple[int, Optional[float]]
 Rnums = Dict[int, Rnum]
 AtomRnums = List[Tuple[int, Optional[float]]]
 NeighborSpec = Tuple[Optional[str], Optional[float]]
-AtomPattern = List[
-    Tuple[
-        Dict[NeighborSpec, Tuple[Vector, ...]],
-        float,
-    ]
-]
+AtomPattern = Dict[NeighborSpec, Tuple[Vector, ...]]
+AtomPatterns = List[Tuple[AtomPattern, float]]
 NeighborConstraints = Dict[int, Vector]
-GraphCoordinates = Dict[int, Vector]
 ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
 ConstraintsCandidates = Dict[
     Tuple[int],
@@ -41,6 +36,7 @@ ConstraintsCandidates = Dict[
         List[float],
     ],
 ]
+GraphCoordinates = Dict[int, Vector]
 
 # GENERAL CHEMISTRY DATA
 
@@ -143,7 +139,7 @@ RRD = Vector(1, 0).rotate(THIRTY_DEGREES * 11)
 
 # DEPICTER CONSTRAINTS
 
-ATOM_PATTERNS: Dict[Optional[str], AtomPattern] = {
+ATOM_PATTERNS: Dict[Optional[str], AtomPatterns] = {
     "C": [
         (
             {
