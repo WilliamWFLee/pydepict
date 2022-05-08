@@ -201,6 +201,7 @@ class Renderer:
             # Calculates display size
             max_all_render_vector = Vector.max_all(self.render_positions.values())
         else:
+            self.render_positions = None
             max_all_render_vector = Vector(0, 0)
         self.display_size = max_all_render_vector + Vector(FRAME_MARGIN, FRAME_MARGIN)
 
@@ -260,6 +261,7 @@ class Renderer:
     @_with_display_lock
     def _render(self):
         if self.redraw:
+            self._text_radii.clear()
             self.display = pygame.display.set_mode(self.display_size)
             # Draw on display
             self.display.fill(WHITE)
