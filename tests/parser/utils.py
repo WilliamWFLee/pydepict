@@ -14,7 +14,7 @@ import pytest_mock
 from pydepict import parser
 from pydepict.consts import Atom
 from pydepict.errors import ParserError
-from pydepict.parser import Stream
+from pydepict.models import Stream
 
 T = TypeVar("T")
 

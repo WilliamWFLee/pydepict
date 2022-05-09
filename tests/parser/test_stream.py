@@ -8,7 +8,7 @@ Tests the stream class used for parsing
 
 import pytest
 
-from pydepict.parser import Stream
+from pydepict.models import Stream
 
 
 TEST_STRING = "test string"

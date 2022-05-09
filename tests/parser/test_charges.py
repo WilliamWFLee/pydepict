@@ -10,7 +10,8 @@ import pytest
 import pytest_mock
 
 from pydepict.errors import ParserError, ParserWarning
-from pydepict.parser import Stream, parse_charge, parse_digit
+from pydepict.models import Stream
+from pydepict.parser import parse_charge, parse_digit
 
 from .utils import apply_stream_parse_method, patch_parse_method
 

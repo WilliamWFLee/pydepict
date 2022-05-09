@@ -12,7 +12,7 @@ import string
 import pytest
 
 from pydepict import parser
-from pydepict.parser import Stream
+from pydepict.models import Stream
 
 STRING_LENGTH = 20
 

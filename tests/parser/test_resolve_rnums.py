@@ -12,7 +12,8 @@ import networkx as nx
 import pytest
 
 from pydepict.consts import Atom, AtomRnums, Rnums
-from pydepict.parser import Stream, new_atom, resolve_rnums
+from pydepict.models import Stream
+from pydepict.parser import new_atom, resolve_rnums
 
 GraphData = Tuple[Dict[int, Atom], Iterable[Tuple[int, int]]]
 RnumData = Tuple[AtomRnums, int, Rnums, GraphData]
