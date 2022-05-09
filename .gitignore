@@ -136,3 +136,6 @@ dmypy.json
 
 # Renderer screenshots
 screenshots/
+
+# Timing evaluation output
+timings.csv
