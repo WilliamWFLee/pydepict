@@ -77,7 +77,7 @@ parses the SMILES string ``CCO`` and displays the corresponding diagram.
 Minimal Code Example
 --------------------
 
-.. code-block::
+.. code-block:: py
 
     from pydepict import depict, parse, render
 
