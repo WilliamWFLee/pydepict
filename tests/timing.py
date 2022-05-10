@@ -6,13 +6,13 @@ tests.timing
 Measures program execution time for increasing SMILES strings lengths
 """
 
-import time
+import timeit
 from typing import Tuple
 
-from pydepict import Renderer, depict, parse
+from pydepict import parse, depict, Renderer  # noqa:F401
 
 REPEATING_UNIT = "C(Br)"
-MAX_REPEATING_UNITS = 25
+MAX_REPEATING_UNITS = 40
 NUM_REPEATS = 100
 
 
@@ -22,25 +22,33 @@ def time_string(smiles: str) -> Tuple[float, float, float]:
 
     :param smiles: The SMILES string to show
     :type smiles: str
-    :return: The average time taken to process a string
-    :rtype: float
+    :return: The average time it takes to parse, depicter,
+             and perform render calculations for the given string
+    :rtype: Tuple[float, float, float]
     """
-    total_parser_time = 0
-    total_depicter_time = 0
-    total_renderer_time = 0
-    renderer = Renderer()
-    for _ in range(NUM_REPEATS):
-        start_time = time.perf_counter()
-        graph, _ = parse(smiles)
-        time_after_parser = time.perf_counter()
-        positions = depict(graph)
-        time_after_depicter = time.perf_counter()
-        renderer.set_structure(graph, positions)
-        end_time = time.perf_counter()
+    total_parser_time = timeit.timeit(
+        stmt=f"graph, _ = parse({smiles!r})",
+        number=NUM_REPEATS,
+        globals=globals(),
+    )
 
-        total_parser_time += time_after_parser - start_time
-        total_depicter_time += time_after_depicter - time_after_parser
-        total_renderer_time += end_time - time_after_depicter
+    total_depicter_time = timeit.timeit(
+        stmt="positions = depict(graph)",
+        setup=f"graph, _ = parse({smiles!r})",
+        number=NUM_REPEATS,
+        globals=globals(),
+    )
+
+    total_renderer_time = timeit.timeit(
+        stmt="renderer.set_structure(graph, positions)",
+        setup=(
+            f"graph, _ = parse({smiles!r})\n"
+            "positions = depict(graph)\n"
+            "renderer = Renderer()\n"
+        ),
+        number=NUM_REPEATS,
+        globals=globals(),
+    )
 
     return tuple(
         time / NUM_REPEATS
