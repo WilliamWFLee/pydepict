@@ -12,8 +12,8 @@ from typing import Tuple
 from pydepict import parse, depict, Renderer  # noqa:F401
 
 REPEATING_UNIT = "C(Br)"
-MAX_REPEATING_UNITS = 40
-NUM_REPEATS = 100
+MAX_REPEATING_UNITS = 50
+NUM_REPEATS = 10
 
 
 def time_string(smiles: str) -> Tuple[float, float, float]:
