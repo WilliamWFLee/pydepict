@@ -44,7 +44,7 @@ __author__ = "William Lee; The University of Sheffield"
 __copyright__ = "Copyright (c) 2022 William Lee and The University of Sheffield"
 __license__ = "MIT"
 
-version_info = _VersionInfo(0, 1, 1, post=1)
+version_info = _VersionInfo(0, 1, 1, post=2)
 __version__ = str(version_info)
 
 
