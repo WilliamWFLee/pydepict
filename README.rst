@@ -81,7 +81,7 @@ Minimal Code Example
 
     from pydepict import depict, parse, render
 
-    graph = parse(input("Enter your SMILES string: "))
+    graph, _ = parse(input("Enter your SMILES string: "))
     positions = depict(graph)
     render(graph, positions)
 
