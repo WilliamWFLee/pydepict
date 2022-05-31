@@ -16,6 +16,8 @@ from pydepict.consts import GraphCoordinates
 from pydepict.models import Vector
 from pydepict.renderer import Renderer
 
+from .utils import requires_video
+
 
 @pytest.fixture
 def structure1() -> Tuple[nx.Graph, GraphCoordinates]:
@@ -50,11 +52,13 @@ def structure2() -> Tuple[nx.Graph, GraphCoordinates]:
     return graph, positions
 
 
+@requires_video
 def test_blocking_renderer(structure1: Tuple[nx.Graph, GraphCoordinates]):
     renderer = Renderer(*structure1)
     renderer.show()
 
 
+@requires_video
 def test_nonblocking_renderer(
     structure1: Tuple[nx.Graph, GraphCoordinates],
     structure2: Tuple[nx.Graph, GraphCoordinates],
