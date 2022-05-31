@@ -11,11 +11,11 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 from collections import defaultdict
 from math import cos, sin, sqrt
 from typing import (
+    Callable,
     Dict,
     Generic,
     Iterable,
     List,
-    Literal,
     NamedTuple,
     Tuple,
     TypeVar,
@@ -190,18 +190,17 @@ class Vector(NamedTuple):
 
     @classmethod
     def _minmax_all(
-        cls, vectors: Iterable["Vector"], func: Literal["min", "max"]
+        cls, vectors: Iterable["Vector"], func: Callable[[Iterable[float]], float]
     ) -> "Vector":
-        if func == "min":
-            function = min
-        elif func == "max":
-            function = max
-        else:
+        if func not in (min, max):
             raise ValueError("func must be 'max' or 'min'")
         all_vectors = [vector for vector in vectors]
 
-        folded_x = function((vector.x for vector in all_vectors), default=0)
-        folded_y = function((vector.y for vector in all_vectors), default=0)
+        if all_vectors:
+            folded_x = func(vector.x for vector in all_vectors)
+            folded_y = func(vector.y for vector in all_vectors)
+        else:
+            folded_x = folded_y = 0
 
         return cls(folded_x, folded_y)
 
@@ -217,7 +216,7 @@ class Vector(NamedTuple):
         :rtype: Vector
         """
 
-        return cls._minmax_all(vectors, "max")
+        return cls._minmax_all(vectors, max)
 
     @classmethod
     def min_all(cls, vectors: Iterable["Vector"]) -> "Vector":
@@ -231,7 +230,7 @@ class Vector(NamedTuple):
         :rtype: Vector
         """
 
-        return cls._minmax_all(vectors, "min")
+        return cls._minmax_all(vectors, min)
 
     @staticmethod
     def distance(vector1: "Vector", vector2: "Vector") -> float:
