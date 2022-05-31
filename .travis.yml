@@ -7,5 +7,7 @@ python:
 install:
   - pip install .[test]
 cache: pip
+env:
+  - SDL_VIDEODRIVER=dummy
 script:
   - pytest

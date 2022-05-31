@@ -10,5 +10,5 @@ import pygame
 import pytest
 
 requires_video = pytest.mark.skipif(
-    not pygame.display.get_init(), reason="requires video support"
+    pygame.display.get_driver() == "dummy", reason="requires video support"
 )
