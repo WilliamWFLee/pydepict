@@ -146,16 +146,13 @@ class Matrix:
         Returns a new :class:`Matrix` representing an anticlockwise rotation
         by :param:`angle` radians.
 
-        Matrix values are rounded to 5 decimal places
-        to avoid issues with cos(pi), sin(pi), etc.
-
         :param angle: The angle of the rotation that the new matrix represents
         :type angle: float
         :return: The matrix representing the rotation
         :rtype: Matrix
         """
-        cos_theta = round(cos(angle), 10)
-        sin_theta = round(sin(angle), 10)
+        cos_theta = cos(angle)
+        sin_theta = sin(angle)
         return cls(
             [
                 [cos_theta, -sin_theta],
