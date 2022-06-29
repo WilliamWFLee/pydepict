@@ -1,2 +1,2 @@
-networkx==2.6.3
-pygame==2.1.2
+networkx>=2.8,<2.9
+pygame>=2.1.2,<2.2
