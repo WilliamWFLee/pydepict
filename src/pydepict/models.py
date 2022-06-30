@@ -112,10 +112,11 @@ class DepictionConstraints:
         self._dict[u][v] = -value if flipped else value
 
     def __delitem__(self, key: Tuple[int, int]):
-        (u, v), _ = self._sort_key(key)
-        if self.__contains__((u, v)):
+        if self.__contains__(key):
+            (u, v), _ = self._sort_key(key)
             del self._dict[u][v]
-        raise KeyError(key)
+        else:
+            raise KeyError(key)
 
     def clear(self):
         """
