@@ -26,7 +26,7 @@ Rnums = Dict[int, Rnum]
 AtomRnums = List[Tuple[int, Optional[float]]]
 NeighborSpec = Tuple[Optional[str], Optional[float]]
 AtomPattern = Dict[NeighborSpec, Tuple[Vector, ...]]
-AtomPatterns = List[Tuple[AtomPattern, float]]
+AtomPatterns = Dict[Optional[str], List[Tuple[AtomPattern, float]]]
 NeighborConstraints = Dict[int, Vector]
 ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
 ConstraintsCandidates = Dict[
@@ -44,7 +44,7 @@ HALOGENS = frozenset("F Cl Br I At".split())
 
 # GEOMETRY
 
-THIRTY_DEGREES = pi / 6
+THIRTY_DEGS_IN_RADS = pi / 6
 
 # PARSER ELEMENT SYMBOLS
 
@@ -83,8 +83,8 @@ CHIRALITY_RANGES = {
 
 # OTHER PARSER SYMBOLS
 
-CHARGE_SYMBOLS = frozenset({"-", "+"})
-TERMINATORS = frozenset({" ", "\t", "\r", "\n"})
+CHARGE_SYMBOLS = frozenset("-+")
+TERMINATORS = frozenset(" \t\r\n")
 BOND_TO_ORDER: Dict[str, float] = {
     "-": 1,
     "=": 2,
@@ -112,7 +112,7 @@ VALENCES: Dict[str, Optional[Tuple[int, ...]]] = {
 
 # PARSER TEMPLATES
 
-DEFAULT_ATOM = {
+DEFAULT_ATOM: Dict[str, AtomAttribute] = {
     "isotope": None,
     "element": "*",
     "hcount": 0,
@@ -120,26 +120,26 @@ DEFAULT_ATOM = {
     "class": None,
     "aromatic": False,
 }
-DEFAULT_BOND = {"order": 1}
+DEFAULT_BOND: Dict[str, BondAttribute] = {"order": 1}
 
 # DEPICTER VECTORS
 
 RRR = Vector(1, 0)
-RRU = Vector(1, 0).rotate(THIRTY_DEGREES)
-RUU = Vector(1, 0).rotate(THIRTY_DEGREES * 2)
-UUU = Vector(1, 0).rotate(THIRTY_DEGREES * 3)
-LUU = Vector(1, 0).rotate(THIRTY_DEGREES * 4)
-LLU = Vector(1, 0).rotate(THIRTY_DEGREES * 5)
-LLL = Vector(1, 0).rotate(THIRTY_DEGREES * 6)
-LLD = Vector(1, 0).rotate(THIRTY_DEGREES * 7)
-LDD = Vector(1, 0).rotate(THIRTY_DEGREES * 8)
-DDD = Vector(1, 0).rotate(THIRTY_DEGREES * 9)
-RDD = Vector(1, 0).rotate(THIRTY_DEGREES * 10)
-RRD = Vector(1, 0).rotate(THIRTY_DEGREES * 11)
+RRU = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS)
+RUU = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 2)
+UUU = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 3)
+LUU = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 4)
+LLU = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 5)
+LLL = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 6)
+LLD = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 7)
+LDD = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 8)
+DDD = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 9)
+RDD = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 10)
+RRD = Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * 11)
 
 # DEPICTER CONSTRAINTS
 
-ATOM_PATTERNS: Dict[Optional[str], AtomPatterns] = {
+ATOM_PATTERNS: AtomPatterns = {
     "C": [
         (
             {
@@ -486,7 +486,7 @@ for meth in (Vector.x_reflect, Vector.y_reflect):
 # OTHER DEPICTER CONSTANTS
 
 CHAIN_ELEMENTS = frozenset("C N O S".split())
-SAMPLE_SIZE = 100
+DEPICTION_SAMPLE_SIZE = 100
 EPSILON = 0.0001
 
 # RENDERER WINDOW ATTRIBUTES

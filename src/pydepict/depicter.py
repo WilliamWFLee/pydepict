@@ -20,8 +20,8 @@ from .consts import (
     ATOM_PATTERNS,
     CHAIN_PATTERN_UNITS,
     EPSILON,
-    SAMPLE_SIZE,
-    THIRTY_DEGREES,
+    DEPICTION_SAMPLE_SIZE,
+    THIRTY_DEGS_IN_RADS,
     AtomPattern,
     ConstraintsCandidates,
     GraphCoordinates,
@@ -331,7 +331,7 @@ def _maximize_sample_width(sample: Dict[int, Vector]):
     """
     Rotates a depiction sample such that its width is maximized.
     """
-    matrices = [Matrix.rotate(THIRTY_DEGREES * i) for i in range(12)]
+    matrices = [Matrix.rotate(THIRTY_DEGS_IN_RADS * i) for i in range(12)]
     widest_sample = max(
         (
             {atom_index: matrix * vector for atom_index, vector in sample.items()}
@@ -383,7 +383,7 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
 
     # Produce constraint samples
     samples: List[DepictionConstraints] = []
-    for _ in range(SAMPLE_SIZE):
+    for _ in range(DEPICTION_SAMPLE_SIZE):
         sample = DepictionConstraints()
         if _sample_constraints(sample, constraints_candidates):
             samples.append(sample)
