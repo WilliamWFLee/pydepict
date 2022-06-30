@@ -12,7 +12,7 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from itertools import combinations, cycle, permutations, product
-from typing import Dict, Generator, List, Tuple
+from typing import DefaultDict, Dict, Generator, List, Tuple
 
 import networkx as nx
 
@@ -294,7 +294,11 @@ def _apply_depiction_sample(
     return coordinates
 
 
-def _congestion(sample: Dict[int, Vector], weights: Dict[int, float], graph: nx.Graph):
+def _congestion(
+    sample: Dict[int, Vector],
+    weights: DefaultDict[int, float],
+    graph: nx.Graph,
+):
     """
     Calculates the congestion of the sample.
     """
@@ -304,8 +308,8 @@ def _congestion(sample: Dict[int, Vector], weights: Dict[int, float], graph: nx.
             if not graph.has_edge(u, v):
                 congestion += 1 / (
                     (Vector.distance(sample[u], sample[v]) + EPSILON) ** 2
-                    * (weights[u] if u in weights else 1)
-                    * (weights[v] if v in weights else 1)
+                    * weights[u]
+                    * weights[v]
                 )
 
     return congestion
@@ -320,9 +324,7 @@ def _choose_best_sample(
     """
     best_sample, _ = min(
         coordinates_samples_with_weights,
-        key=lambda sample_with_weight: _congestion(
-            sample_with_weight[0], sample_with_weight[1], graph
-        ),
+        key=lambda sample_with_weight: _congestion(*sample_with_weight, graph),
     )
     return best_sample
 
