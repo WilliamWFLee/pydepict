@@ -184,9 +184,39 @@ class DepictionConstraints:
         self._dict.clear()
 
 
-class Matrix:
+class _MatrixBase:
+    @staticmethod
+    def _index_valid(index: float) -> bool:
+        return 0 <= index < 2
+
+
+class _MatrixRowView(_MatrixBase):
     """
-    Represents a 2x2 matrix
+    View representing a matrix row.
+
+    Setting and getting values from the row is supported,
+    and setting values changes the matrix the row comes from.
+    """
+
+    def __init__(self, list: List[float]):
+        self._list: List[float] = list
+
+    def _check_index(self, column_index: int):
+        if not self._index_valid(column_index):
+            raise ValueError("Row index must be between 0 and 1")
+
+    def __getitem__(self, column_index: int) -> float:
+        self._check_index(column_index)
+        return self._list[column_index]
+
+    def __setitem__(self, column_index: int, value: float):
+        self._check_index(column_index)
+        self._list[column_index] = value
+
+
+class Matrix(_MatrixBase):
+    """
+    Represents a 2x2 matrix.
     """
 
     def __init__(self, values: List[List[float]] = None):
@@ -220,12 +250,10 @@ class Matrix:
             ]
         )
 
-    def __getitem__(self, key: Tuple[int, int]):
-        if not isinstance(key, tuple):
-            raise TypeError("Key must be tuple")
-        if any(v < 0 or v > 2 for v in key):
-            raise ValueError("Indices must be between 0 and 2")
-        return self._list[key[0]][key[1]]
+    def __getitem__(self, row_index: int) -> _MatrixRowView:
+        if not self._index_valid(row_index):
+            raise ValueError("Row index must be between 0 and 1")
+        return _MatrixRowView(self._list[row_index])
 
     def __mul__(self, vector: "Vector") -> "Vector":
         return Vector(*(sum(u * v for u, v in zip(row, vector)) for row in self._list))
