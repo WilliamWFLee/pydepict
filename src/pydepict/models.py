@@ -31,6 +31,13 @@ class Stream(Generic[T]):
     """
     Stream class for allowing one-item peekahead.
 
+    :class:`Stream` is an iterable so it can be used in a ``for`` loop::
+
+        for item in stream:
+            ...
+
+    or using :func:`next` with a stream.
+
     .. attribute:: pos
 
         The position within the iterable at which the stream is,
@@ -61,7 +68,8 @@ class Stream(Generic[T]):
 
         If stream is at end then return :param:`default`.
 
-        :param default: Value to return if stream is at end instead
+        :param default: Value to return if stream is at end instead,
+                        or raises :exc:`StopIteration` if not provided.
         :type: T
         :return: The next item in the stream
         :rtype: T
