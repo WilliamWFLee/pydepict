@@ -215,12 +215,15 @@ def resolve_rnums(
                 raise new_exception("Atoms already bonded", stream)
 
             # Aim to store bond order in variable 'bond_order'
-            if bond_order is not None and other_bond_order is not None:
-                if bond_order != other_bond_order:
-                    raise ParserError(
-                        f"Explicit bond orders for rnum {rnum_index} do not match: "
-                        f"{bond_order} and {other_bond_order}"
-                    )
+            if (
+                bond_order is not None
+                and other_bond_order is not None
+                and bond_order != other_bond_order
+            ):
+                raise ParserError(
+                    f"Explicit bond orders for rnum {rnum_index} do not match: "
+                    f"{bond_order} and {other_bond_order}"
+                )
             elif bond_order is None and other_bond_order is not None:
                 bond_order = other_bond_order
             elif bond_order is None and other_bond_order is None:
