@@ -269,6 +269,42 @@ class Matrix(_MatrixBase):
 
 
 class Vector(NamedTuple):
+    """
+    Representation of a 2D vector.
+
+    Supports a variety of operations::
+
+    >>> vec1 = Vector(2, 4)
+    >>> vec2 = Vector(3, 9)
+    >>> vec1 + vec2   # Vector addition
+    Vector(5, 13)
+    >>> vec1 - vec2  # Vector difference
+    Vector(-1, -5)
+    >>> vec1 * vec2  # Component-wise vector multiplication
+    Vector(6, 36)
+    >>> 2.5 * vec1  # Scalar multiplication
+    Vector(5.0, 10.0)
+    >>> -vec1  # Vector negation
+    Vector(-2, -4)
+    >>> vec1 == vec2  # Vector equality
+    False
+    >>> Vector.distance(vec1, vec2)  # Vector distance
+    5.0990195135927845
+    >>> abs(vec1)  # Vector magnitude
+    4.47213595499958
+    >>> vec1.normal()  # Calculates a normal to the vector
+    Vector(4, -2)
+    >>> vec1.rotate(math.pi)  # Rotates π radians anticlockwise
+    Vector(-2, -4)
+    >>> vec1.x_reflect()  # Reflection in the x-axis
+    Vector(2, -4)
+    >>> vec2.y_reflect()  # Reflection in the y-axis
+    Vector(-2, 4)
+
+    Two class methods :meth:`min_all` and `:meth:`max_all`
+    can also be used to find the vector representing the component-wise
+    minimum and maximum vectors respectively from an iterable of vectors.
+    """
     x: float
     y: float
 
@@ -330,7 +366,7 @@ class Vector(NamedTuple):
 
     def normal(self) -> "Vector":
         """
-        Calculates the normal to this vector.
+        Calculates a normal to this vector.
 
         :return: The normal
         :rtype: Vector
