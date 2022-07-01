@@ -147,8 +147,9 @@ def imply_shorthand_chirality(graph: nx.Graph):
     for atom_index, chirality in graph.nodes(data="chirality"):
         if chirality is not None and chirality[0] is None:
             graph.nodes[atom_index]["chirality"] = (
-                "AL" if is_allenal_center(atom_index, graph) else "TH"
-            )
+                    ("AL" if is_allenal_center(atom_index, graph) else "TH"),
+                    index,
+                )
 
 
 def infer_bond(atom_aromatic: bool, other_atom_aromatic: bool) -> Bond:
