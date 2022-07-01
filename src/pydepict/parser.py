@@ -145,8 +145,10 @@ def imply_shorthand_chirality(graph: nx.Graph):
     """
 
     for atom_index, chirality in graph.nodes(data="chirality"):
-        if chirality is not None and chirality[0] is None:
-            graph.nodes[atom_index]["chirality"] = (
+        if chirality is not None:
+            code, index = chirality
+            if code is None:
+                graph.nodes[atom_index]["chirality"] = (
                     ("AL" if is_allenal_center(atom_index, graph) else "TH"),
                     index,
                 )
