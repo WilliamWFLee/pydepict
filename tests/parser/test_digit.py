@@ -10,7 +10,8 @@ import pytest
 
 from pydepict.errors import ParserError
 from pydepict.parser import parse_digit
-from tests.parser.utils import apply_stream_parse_method
+
+from .utils import apply_stream_parse_method
 
 
 def test_valid_digits(valid_digit: str):

@@ -14,7 +14,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
-from .consts import CHAIN_ELEMENTS, AtomAttribute, BondAttribute, GraphCoordinates
+from .types import AtomAttribute, BondAttribute, GraphCoordinates
 from .models import Vector
 
 __all__ = [
@@ -203,27 +203,6 @@ def is_allenal_center(atom_index: int, graph: nx.Graph) -> bool:
         get_atom_attrs(atom_index, graph, "element") == "C"
         and num_bond_order(atom_index, graph, 2) == 2
         and bond_order_sum(atom_index, graph) == 4
-    )
-
-
-def is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
-    """
-    Determines whether or not the specified atom in the specified graph
-    is a chain atom (i.e. eligible to be treated as being in a chain).
-
-    :param graph: The graph to look for the atom in
-    :type graph: nx.Graph
-    :param atom_index: The index of the atom
-    :type atom_index: int
-    :return: Whether the atom is a chain atom
-    :rtype: bool
-    """
-    element, charge = get_atom_attrs(atom_index, graph, "element", "charge")
-    return (
-        element in CHAIN_ELEMENTS
-        and charge == 0
-        and num_bond_order(atom_index, graph, 3) == 0
-        and num_heavy_atom_neighbors(atom_index, graph) in (2, 3)
     )
 
 

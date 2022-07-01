@@ -11,7 +11,8 @@ import pytest_mock
 
 from pydepict.errors import ParserError
 from pydepict.parser import parse_class, parse_number
-from tests.parser.utils import apply_stream_parse_method, patch_parse_method
+
+from .utils import apply_stream_parse_method, patch_parse_method
 
 
 @pytest.fixture

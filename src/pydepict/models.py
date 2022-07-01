@@ -22,9 +22,11 @@ from typing import (
     Union,
 )
 
-T = TypeVar("T")
+from .consts import THIRTY_DEGS_IN_RADS, VECTOR_NAMES
 
 __all__ = ["Stream", "Matrix", "Vector"]
+
+T = TypeVar("T")
 
 
 class Stream(Generic[T]):
@@ -305,6 +307,7 @@ class Vector(NamedTuple):
     can also be used to find the vector representing the component-wise
     minimum and maximum vectors respectively from an iterable of vectors.
     """
+
     x: float
     y: float
 
@@ -477,3 +480,8 @@ class Vector(NamedTuple):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.x}, {self.y})"
+
+
+# Adds constant vectors to :class:`Vector`
+for i, name in enumerate(VECTOR_NAMES):
+    setattr(Vector, name, Vector(1, 0).rotate(THIRTY_DEGS_IN_RADS * i))

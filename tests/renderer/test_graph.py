@@ -12,9 +12,9 @@ from typing import Tuple
 import networkx as nx
 import pytest
 
-from pydepict.consts import GraphCoordinates
 from pydepict.models import Vector
 from pydepict.renderer import Renderer
+from pydepict.types import GraphCoordinates
 
 from .utils import requires_video
 

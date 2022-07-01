@@ -13,7 +13,7 @@ from typing import NamedTuple, Optional
 
 from .depicter import depict
 from .parser import parse
-from .renderer import render
+from .renderer import Renderer, render
 
 __all__ = [
     "__author__",
@@ -58,7 +58,3 @@ def show(smiles: str):
     graph, _ = parse(smiles)
     positions = depict(graph)
     render(graph, positions, title=smiles)
-
-
-# Clean up namespace
-del NamedTuple, Optional

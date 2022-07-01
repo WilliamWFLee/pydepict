@@ -11,9 +11,9 @@ from typing import Dict, Iterable, Tuple
 import networkx as nx
 import pytest
 
-from pydepict.consts import Atom, AtomRnums, Rnums
 from pydepict.models import Stream
 from pydepict.parser import new_atom, resolve_rnums
+from pydepict.types import Atom, AtomRnums, Rnums
 
 GraphData = Tuple[Dict[int, Atom], Iterable[Tuple[int, int]]]
 RnumData = Tuple[AtomRnums, int, Rnums, GraphData]

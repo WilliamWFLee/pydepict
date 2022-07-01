@@ -9,9 +9,9 @@ Tests the parsing of chains
 import pytest
 import pytest_mock
 
-from pydepict.consts import Chain
 from pydepict.errors import ParserError
 from pydepict.parser import new_atom, new_bond, parse_atom, parse_bond, parse_chain
+from pydepict.types import Chain
 
 from .utils import apply_stream_parse_method, patch_parse_method
 

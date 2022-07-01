@@ -13,9 +13,9 @@ import pytest
 import pytest_mock
 
 from pydepict import parser
-from pydepict.consts import Atom, AtomAttribute
 from pydepict.models import Stream
 from pydepict.parser import parse_atom
+from pydepict.types import Atom, AtomAttribute
 from tests.parser.utils import apply_stream_parse_method, patch_parse_method
 
 SINGLE_ATOM_TEMPLATE = "[{isotope}{element}H{hcount}{charge:+}:{class}]"

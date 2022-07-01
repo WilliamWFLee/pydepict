@@ -12,9 +12,9 @@ from unittest.mock import DEFAULT, MagicMock
 import pytest_mock
 
 from pydepict import parser
-from pydepict.consts import Atom
 from pydepict.errors import ParserError
 from pydepict.models import Stream
+from pydepict.types import Atom
 
 T = TypeVar("T")
 

@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 import networkx as nx
 import pytest
 
-from pydepict.consts import Atom, Bond
+from pydepict.types import Atom, Bond
 from pydepict.parser import fill_hydrogens, new_atom, new_bond
 
 GraphData = Tuple[List[Atom], Dict[int, Dict[int, Bond]], Dict[int, int]]
