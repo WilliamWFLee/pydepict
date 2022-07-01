@@ -20,16 +20,16 @@ Bond = Dict[str, BondAttribute]
 Chain = Tuple[List[Atom], List[Bond]]
 Rnum = Tuple[int, Optional[float]]
 Rnums = Dict[int, Rnum]
-AtomRnums = List[Tuple[int, Optional[float]]]
 NeighborSpec = Tuple[Optional[str], Optional[float]]
-AtomPattern = Dict[NeighborSpec, Tuple[Vector, ...]]
-AtomPatterns = Dict[Optional[str], List[Tuple[AtomPattern, float]]]
-NeighborConstraints = Dict[int, Vector]
+NeighborPattern = Dict[NeighborSpec, Tuple[Vector, ...]]
+NeighborVectors = Dict[int, Vector]
+AtomRnums = List[Tuple[int, Optional[float]]]
+AtomPatterns = Dict[Optional[str], List[Tuple[NeighborPattern, float]]]
 ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
 ConstraintsCandidates = Dict[
     Tuple[int],
     Tuple[
-        List[List[NeighborConstraints]],
+        List[List[NeighborVectors]],
         List[float],
     ],
 ]
