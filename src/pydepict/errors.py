@@ -3,9 +3,9 @@
 """
 pydepict.errors
 
-Custom error classes
+Custom error classes.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 
@@ -14,12 +14,12 @@ from typing import Optional
 
 class ParserError(Exception):
     """
-    Error class for all errors that occur when parsing input
+    Error class for all errors that occur when parsing input.
     """
 
     def __init__(self, msg: str, position: Optional[int] = None) -> None:
         """
-        Initialises an instance of a parser exception
+        Initialises an instance of a parser exception.
 
         :param msg: The error message
         :type msg: str
@@ -36,7 +36,7 @@ class ParserError(Exception):
 
 class ParserWarning(ParserError, Warning):
     """
-    Warning class for all warnings that occur when parsing input
+    Class for all warnings that occur when parsing input.
     """
 
     pass
@@ -44,7 +44,7 @@ class ParserWarning(ParserError, Warning):
 
 class DepicterError(Exception):
     """
-    Class for all depicter-related exceptions
+    Class for all depicter-related exceptions.
     """
 
     pass

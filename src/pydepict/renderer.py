@@ -5,7 +5,7 @@ pydepict.renderer
 
 Renderer for molecular graphs with relative Cartesian coordinates.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 import os

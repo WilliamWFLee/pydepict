@@ -351,7 +351,7 @@ class Vector(NamedTuple):
 
     def rotate(self, angle: float) -> "Vector":
         """
-        Rotates this vector by :param:`angle` radians anticlockwise
+        Rotates this vector by :param:`angle` radians anticlockwise.
 
         :param angle: The angle to rotate by
         :type angle: float
@@ -371,7 +371,7 @@ class Vector(NamedTuple):
 
     def x_reflect(self) -> "Vector":
         """
-        Reflects the vector in the x-axis, and returns the reflected vector
+        Reflects the vector in the x-axis, and returns the reflected vector.
 
         :return: The reflected vector
         :rtype: Vector
@@ -380,7 +380,7 @@ class Vector(NamedTuple):
 
     def y_reflect(self) -> "Vector":
         """
-        Reflects the vector in the y-axis, and returns the reflected vector
+        Reflects the vector in the y-axis, and returns the reflected vector.
 
         :return: The reflected vector
         :rtype: Vector
@@ -401,7 +401,7 @@ class Vector(NamedTuple):
 
     def __add__(self, other: "Vector") -> "Vector":
         """
-        Returns the sum of two vectors
+        Returns the sum of two vectors.
         """
         if isinstance(other, self.__class__):
             return self.__class__(self.x + other.x, self.y + other.y)
@@ -409,7 +409,7 @@ class Vector(NamedTuple):
 
     def __sub__(self, other: "Vector") -> "Vector":
         """
-        Returns the difference of two vectors
+        Returns the difference of two vectors.
         """
         if isinstance(other, self.__class__):
             return self.__class__(self.x - other.x, self.y - other.y)

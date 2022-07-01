@@ -5,7 +5,7 @@ pydepict.__main__
 
 A program for parsing and rendering chemical structures from SMILES strings.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 

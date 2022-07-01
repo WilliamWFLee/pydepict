@@ -5,7 +5,7 @@ pydepict.depicter
 
 Depicter for determining the graphical placement of atoms in a molecular graph.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 import random
@@ -125,7 +125,7 @@ def _find_atom_constraints(
 
 def _find_chains(atoms: List[int], graph: nx.Graph) -> List[List[int]]:
     """
-    Finds all chains in a graph
+    Finds all chains in a graph.
     """
     unchained_chain_atoms = [
         atom_index for atom_index in atoms if is_chain_atom(atom_index, graph)
@@ -186,7 +186,7 @@ def _chain_triplets(
 
 def _find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCandidates:
     """
-    Returns a set of constraints for chains
+    Returns a set of constraints for chains.
     """
     chains = _find_chains(atoms, graph)
     candidates: ConstraintsCandidates = {}
@@ -225,7 +225,7 @@ def _remove_conflicting_constraints(
     """
     Removes constraints candidate conflicts.
 
-    Returns whether there are constraints left for all blocks
+    Returns whether there are constraints left for all blocks.
     """
     for block, (patterns, weights) in constraints_candidates.items():
         if v not in block:
@@ -250,7 +250,7 @@ def _sample_constraints(
     constraints_candidates: ConstraintsCandidates,
 ) -> None:
     """
-    Adds non-conflicting constraints to depiction sample
+    Adds non-conflicting constraints to depiction sample.
     """
     candidates_copy = deepcopy(constraints_candidates)
     # Shuffle order in which fragments are considered
@@ -320,7 +320,7 @@ def _choose_best_sample(
     graph: nx.Graph,
 ) -> Dict[int, Vector]:
     """
-    Selects the best sample from a list of dictionaries of coordinate samples,
+    Selects the best sample from a list of dictionaries of coordinate samples.
     """
     best_sample, _ = min(
         coordinates_samples_with_weights,
@@ -346,7 +346,7 @@ def _maximize_sample_width(sample: Dict[int, Vector]):
 
 def _postprocess_sample(sample: GraphCoordinates):
     """
-    Postprocesses a sample dictionary to produce the final depiction
+    Postprocesses a sample dictionary to produce the final depiction.
     """
     _maximize_sample_width(sample)
 

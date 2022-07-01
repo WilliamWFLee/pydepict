@@ -3,9 +3,9 @@
 """
 pydepict.consts
 
-Constants for parsing, depicting and rendering
+Constants for parsing, depicting and rendering.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 from math import pi

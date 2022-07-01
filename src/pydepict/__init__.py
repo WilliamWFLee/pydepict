@@ -5,7 +5,7 @@ pydepict
 
 A library for parsing and rendering chemical structures from SMILES strings.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 
@@ -13,7 +13,7 @@ from typing import NamedTuple, Optional
 
 from .depicter import depict
 from .parser import parse
-from .renderer import Renderer, render
+from .renderer import render
 
 __all__ = [
     "__author__",

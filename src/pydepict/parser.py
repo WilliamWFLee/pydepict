@@ -3,9 +3,9 @@
 """
 pydepict.parser
 
-Parsing for strings conforming to the OpenSMILES specification
+Parsing for strings conforming to the OpenSMILES specification.
 
-Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details
+Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
 import string
