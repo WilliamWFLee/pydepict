@@ -4,7 +4,7 @@ import string
 
 import pytest
 
-from pydepict.parser import (
+from pydepict.parser.consts import (
     BOND_TO_ORDER,
     CHARGE_SYMBOLS,
     ELEMENT_SYMBOLS,

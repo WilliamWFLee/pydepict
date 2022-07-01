@@ -9,7 +9,8 @@ Tests the parsing of bond symbols
 import pytest
 
 from pydepict.errors import ParserError
-from pydepict.parser import BOND_TO_ORDER, parse_bond
+from pydepict.parser import parse_bond
+from pydepict.parser.consts import BOND_TO_ORDER
 
 from .utils import apply_stream_parse_method
 

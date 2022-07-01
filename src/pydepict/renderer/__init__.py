@@ -8,6 +8,7 @@ Renderer for molecular graphs with relative Cartesian coordinates.
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
+
 import os
 from collections import defaultdict
 from copy import deepcopy
@@ -19,36 +20,23 @@ from typing import Any, Callable, Optional
 import networkx as nx
 import pygame
 
-from .models import Vector
-from .types import GraphCoordinates
-from .utils import average_depicted_bond_length, get_datetime_filename
+from ..models import Vector
+from ..types import GraphCoordinates
+from ..utils import average_depicted_bond_length, get_datetime_filename
+from .consts import (
+    BLACK,
+    BOND_WIDTH,
+    DISPLAY_BOND_LENGTH,
+    FONT_FAMILY,
+    FONT_SIZE,
+    FRAME_MARGIN,
+    SCREENSHOTS_DIR,
+    TEXT_MARGIN,
+    WHITE,
+    WINDOW_TITLE,
+)
 
 __all__ = ["Renderer", "render"]
-
-# WINDOW ATTRIBUTES
-
-WINDOW_TITLE = "pydepict"
-
-# COLORS
-
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-
-# DIMENSIONS
-
-MIN_DISPLAY_SIZE = (400, 300)
-FRAME_MARGIN = 50
-DISPLAY_BOND_LENGTH = 55
-BOND_WIDTH = 6
-TEXT_MARGIN = 2
-
-# FONT
-
-FONT_FAMILY = "Arial"
-FONT_SIZE = 20
-
-# PATHS
-SCREENSHOTS_DIR = "screenshots"
 
 
 class Renderer:
