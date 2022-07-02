@@ -10,9 +10,8 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 import random
 from copy import deepcopy
-from itertools import combinations, cycle, permutations
-from time import perf_counter
-from typing import DefaultDict, Dict, Generator, List, Tuple
+from itertools import combinations, cycle
+from typing import DefaultDict, Dict, Generator, List, Optional, Tuple
 
 import networkx as nx
 
@@ -125,9 +124,7 @@ def find_longest_chain_from(
     for neighbor_idx in start_neighbors:
         next_chain_atoms = chain_atoms.copy()
         next_chain_atoms.remove(start)
-        chains.append(
-            find_longest_chain_from(neighbor_idx, next_chain_atoms, graph)
-        )
+        chains.append(find_longest_chain_from(neighbor_idx, next_chain_atoms, graph))
     if not chains:
         return []
     return [start] + max(chains, key=lambda x: len(x))
@@ -160,31 +157,56 @@ def find_chains(chain_atoms: List[int], graph: nx.Graph) -> List[DepicterChain]:
     return chains
 
 
-def _chain_triplets(
-    chain: List[int], graph: nx.Graph
-) -> Generator[Tuple[int, int, int, Tuple[int, ...]], None, None]:
-    left = None
+def chain_neighbors(
+    chain: DepicterChain, graph: nx.Graph
+) -> Generator[Tuple[int, int, Tuple[int, ...]], None, None]:
+    """
+    Determines the neighbors of each atom in a chain.
+
+    Returns a generator for iterating over each set of neighbors.
+
+    :param chain: The chain to determine the neighbors for.
+    :type chain: DepicterChain
+    :param graph: The graph associated with the chain.
+    :type graph: nx.Graph
+    :return: A generator for iterating over the neighbors of each atom,
+             producing a 3-tuple: the first element
+             the index of the preceding atom in the chain; the second element
+             the index of the next atom in the chain; and the third element
+             a tuple of the other substituents of the chain atom.
+    :rtype: Generator[Tuple[int, int, Tuple[int, ...]], None, None]
+    """
+
+    def find_other_chain_endpoint(chain_neighbor: int) -> Optional[int]:
+        other_chain_atoms = [
+            v
+            for v in root_neighbors
+            if v != chain_neighbor and graph.nodes[v]["element"] in CHAIN_ELEMENTS
+        ]
+        if other_chain_atoms:
+            return other_chain_atoms[0]
+        return None
+
+    def find_chain_subs(chain_neighbors: Tuple[int, int]) -> Tuple[int, ...]:
+        subs = tuple(
+            neighbor for neighbor in root_neighbors if neighbor not in chain_neighbors
+        )
+        return subs
+
     root_neighbors = neighbors(chain[0], graph)
-    other_chain_atoms = [v for v in root_neighbors if v != chain[1]]
-    if other_chain_atoms:
-        left = other_chain_atoms[0]
-    subs = [v for v in root_neighbors if v not in (left, chain[1])]
-    yield left, chain[0], chain[1], subs
+    left = find_other_chain_endpoint(chain[1])
+    yield left, chain[1], find_chain_subs((left, chain[1]))
 
     for left, root, right in zip(chain[:-2], chain[1:-1], chain[2:]):
-        subs = neighbors(root, graph, (left, right))
-        yield left, root, right, subs
+        root_neighbors = neighbors(root, graph)
+        yield left, right, find_chain_subs((left, right))
 
-    right = None
     root_neighbors = neighbors(chain[-1], graph)
-    other_chain_atoms = [v for v in root_neighbors if v != chain[-2]]
-    if other_chain_atoms:
-        right = other_chain_atoms[0]
-    subs = [v for v in root_neighbors if v not in (chain[-2], right)]
-    yield chain[-2], chain[-1], right, subs
+    right = find_other_chain_endpoint(chain[-2])
+    yield chain[-2], right, find_chain_subs((chain[-2], right))
 
 
-def _find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCandidates:
+def find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCandidates:
     """
     Returns a set of constraints for chains.
     """
@@ -194,14 +216,13 @@ def _find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCan
         patterns = []
         for pattern_units in CHAIN_PATTERN_UNITS:
             pattern = []
-            for (left, _, right, subs), chain_pattern in zip(
-                _chain_triplets(chain, graph), cycle(pattern_units)
+            for (left, right, subs), chain_pattern in zip(
+                chain_neighbors(chain, graph), cycle(pattern_units)
             ):
                 neighbor_constraints = {}
-                (
-                    neighbor_constraints[left],
-                    neighbor_constraints[right],
-                ) = chain_pattern[0]
+                for neighbor_idx, vector in zip((left, right), chain_pattern[0]):
+                    if neighbor_idx is not None:
+                        neighbor_constraints[neighbor_idx] = vector
                 if subs:
                     sub_vectors = chain_pattern[1][len(subs)]
                     for sub, vector in zip(subs, sub_vectors):
@@ -216,7 +237,7 @@ def _find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCan
     return candidates
 
 
-def _remove_conflicting_constraints(
+def remove_conflicting_constraints(
     u: int,
     v: int,
     vector: Vector,
@@ -245,7 +266,7 @@ def _remove_conflicting_constraints(
     return True
 
 
-def _sample_constraints(
+def sample_constraints(
     sample: DepictionConstraints,
     constraints_candidates: ConstraintsCandidates,
 ) -> None:
@@ -272,7 +293,7 @@ def _sample_constraints(
                 # Set vector in graph-wide constraints sample
                 sample[u, v] = vector
                 # Remove conflicting constraints
-                constraints_left = _remove_conflicting_constraints(
+                constraints_left = remove_conflicting_constraints(
                     u, v, vector, candidates_copy
                 )
                 if not constraints_left:
@@ -280,7 +301,7 @@ def _sample_constraints(
     return True
 
 
-def _apply_depiction_sample(
+def apply_depiction_sample(
     graph: nx.Graph, constraints: DepictionConstraints
 ) -> Dict[int, Vector]:
     """
@@ -294,7 +315,7 @@ def _apply_depiction_sample(
     return coordinates
 
 
-def _congestion(
+def sample_congestion(
     sample: Dict[int, Vector],
     weights: DefaultDict[int, float],
     graph: nx.Graph,
@@ -315,7 +336,7 @@ def _congestion(
     return congestion
 
 
-def _choose_best_sample(
+def select_best_sample(
     coordinates_samples_with_weights: List[Tuple[Dict[int, Vector], Dict[int, float]]],
     graph: nx.Graph,
 ) -> Dict[int, Vector]:
@@ -324,14 +345,17 @@ def _choose_best_sample(
     """
     best_sample, _ = min(
         coordinates_samples_with_weights,
-        key=lambda sample_with_weight: _congestion(*sample_with_weight, graph),
+        key=lambda sample_with_weight: sample_congestion(*sample_with_weight, graph),
     )
     return best_sample
 
 
-def _maximize_sample_width(sample: Dict[int, Vector]):
+def maximize_sample_width(sample: Dict[int, Vector]):
     """
     Rotates a depiction sample such that its width is maximized.
+
+    :param sample: The sample whose width should be maximised.
+    :type sample: Dict[int, Vector]
     """
     matrices = [Matrix.rotate(THIRTY_DEGS_IN_RADS * i) for i in range(12)]
     widest_sample = max(
@@ -344,11 +368,11 @@ def _maximize_sample_width(sample: Dict[int, Vector]):
     sample.update(widest_sample)
 
 
-def _postprocess_sample(sample: GraphCoordinates):
+def postprocess_sample(sample: GraphCoordinates):
     """
     Postprocesses a sample dictionary to produce the final depiction.
     """
-    _maximize_sample_width(sample)
+    maximize_sample_width(sample)
 
 
 def depict(graph: nx.Graph) -> GraphCoordinates:
@@ -368,7 +392,7 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
     constraints_candidates: ConstraintsCandidates = {}
 
     # Determine chain constraints
-    chain_constraints = _find_chain_constraints(atoms, graph)
+    chain_constraints = find_chain_constraints(atoms, graph)
     constraints_candidates.update(chain_constraints)
 
     # Determine atom constraints
@@ -387,15 +411,15 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
     samples: List[DepictionConstraints] = []
     for _ in range(DEPICTION_SAMPLE_SIZE):
         sample = DepictionConstraints()
-        if _sample_constraints(sample, constraints_candidates):
+        if sample_constraints(sample, constraints_candidates):
             samples.append(sample)
     if not samples:
         raise DepicterError("Could not satisfy constraints")
     # Convert constraints to Cartesian coordinates
     coordinates_samples_with_weights = [
-        (_apply_depiction_sample(graph, sample), sample.weights) for sample in samples
+        (apply_depiction_sample(graph, sample), sample.weights) for sample in samples
     ]
-    best_sample = _choose_best_sample(coordinates_samples_with_weights, graph)
+    best_sample = select_best_sample(coordinates_samples_with_weights, graph)
     # Postprocess constraints
-    _postprocess_sample(best_sample)
+    postprocess_sample(best_sample)
     return best_sample
