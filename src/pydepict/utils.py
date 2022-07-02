@@ -9,13 +9,13 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 import datetime as dt
-from itertools import product
 from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
-from .types import AtomAttribute, BondAttribute, GraphCoordinates
+from .consts import HALOGENS
 from .models import Vector
+from .types import AtomAttribute, BondAttribute, GraphCoordinates, NeighborSpec
 
 __all__ = [
     "bond_order_sum",
@@ -23,7 +23,6 @@ __all__ = [
     "is_allenal_center",
     "depicted_distance",
     "average_depicted_bond_length",
-    "none_iter",
 ]
 
 T = TypeVar("T")
@@ -260,21 +259,6 @@ def depiction_width(sample: Dict[int, Vector]) -> float:
     return max_x - min_x
 
 
-def none_iter(iterable: Iterable[T]) -> Iterable[Iterable[Optional[T]]]:
-    """
-    Takes an iterable, and returns an iterable that iterates all possible
-    substitutions of the elements of the iterable with :data:`None`.
-
-    :param iterable: The iterable
-    :type iterable: Iterable[T]
-    :return: The iterable of iterables with all possible substitutions
-    :rtype: Iterable[Iterable[Optional[T]]]
-    """
-    return product(
-        *((value, None) if value is not None else (None,) for value in iterable)
-    )
-
-
 def prune_hydrogens(graph: nx.Graph, atoms: List[int]):
     """
     Finds hydrogen atoms in the graph, and removes them from the specified list
@@ -307,6 +291,78 @@ def prune_terminals(graph: nx.Graph, atoms: List[int]):
     for atom_index in list(graph.nodes):
         if len(graph[atom_index]) <= 1 and atom_index in atoms and len(atoms) > 1:
             atoms.remove(atom_index)
+
+
+def element_match(elem1: Optional[str], elem2: Optional[str]) -> bool:
+    """
+    Determines whether two element symbols match.
+
+    Two element symbols match when the two element symbols are the same,
+    or when either or both element symbols is/are :data:`None`.
+
+    Matching also works for special symbols for representing several elements,
+    for example ``X`` for halogens will match with ``F``, ``Cl``, etc.
+
+    :param elem1: One of the element symbols.
+    :type elem1: str
+    :param elem2: The other element symbol.
+    :type elem1: str
+    :return: Whether the two element symbols match.
+    :rtype: bool
+    """
+    if elem1 == elem2:
+        return True
+    if any(elem is None for elem in (elem1, elem2)):
+        return True
+    if sum(elem == "X" for elem in (elem1, elem2)) == 1:
+        elem1 = elem2 if elem1 == "X" else elem1
+        return elem1 in HALOGENS
+    return False
+
+
+def bond_order_match(order1: Optional[float], order2: Optional[float]) -> bool:
+    """
+    Determines whether two bond orders match.
+
+    Two bond orders match when the two bond orders are the same,
+    or when either or both bond orders is/are :data:`None`.
+
+    :param order1: One of the bond orders.
+    :type order1: Optional[float]
+    :param order2: The other bond order.
+    :type order1: Optional[float]
+    :return: Whether the two bond orders match.
+    :rtype: bool
+    """
+    if order1 == order2:
+        return True
+    if any(order is None for order in (order1, order2)):
+        return True
+    return False
+
+
+def neighbor_spec_match(
+    neighbor_spec1: NeighborSpec,
+    neighbor_spec2: NeighborSpec,
+) -> bool:
+    """
+    Determines whether two neighbor specs match.
+
+    Two neighbor specs match both the elements and bond orders match.
+
+    :param neighbor_spec1: One of the neighbor specs.
+    :type neighbor_spec1: NeighborSpec,
+    :param neighbor_spec2: The other neighbor specs.
+    :type neighbor_spec2: NeighborSpec,
+    :return: Whether the two neighbor specs match.
+    :rtype: bool
+    """
+    return all(
+        match(spec_value1, spec_value2)
+        for match, (spec_value1, spec_value2) in zip(
+            (element_match, bond_order_match), zip(neighbor_spec1, neighbor_spec2)
+        )
+    )
 
 
 def get_datetime_filename() -> str:

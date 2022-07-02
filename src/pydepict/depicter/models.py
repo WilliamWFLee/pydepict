@@ -9,9 +9,13 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 
-from typing import DefaultDict, Dict, Tuple
+from itertools import permutations
+from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple
 
 from ..models import Vector
+from ..types import NeighborPattern, NeighborSpec
+
+__all__ = ["DepictionConstraints", "AtomPattern"]
 
 
 class DepictionConstraints:
@@ -112,3 +116,98 @@ class DepictionConstraints:
         Clears all constraints
         """
         self._dict.clear()
+
+
+class AtomPattern:
+    """
+    Represents an atom pattern, and provides methods for matching
+    with atoms and their neighbors.
+
+    .. attribute:: center
+
+        The element of the central atom in the pattern. If defined to be :data:`None`,
+        then it can be matched with any central atom.
+
+        :type: Optional[str]
+
+    .. attribute:: neighbor_pattern
+
+        A set of tuples, each tuple being a 2-tuple, with the first element
+        a neighbor spec tuple, and the second element a vector
+        from the central atom to that neighbor.
+
+        :type: Set[Tuple[NeighborSpec, Vector]]
+
+    .. attribute:: weight
+
+        The weight given to this atom pattern, used during the sampling process.
+
+        :type: float
+    """
+
+    def __init__(
+        self,
+        center: Optional[str],
+        neighbor_pattern: NeighborPattern,
+        weight: float,
+    ):
+        self.center = center
+        self.neighbor_pattern = neighbor_pattern
+        self.weight = weight
+
+    @property
+    def neighbor_pattern(self) -> NeighborPattern:
+        return self._neighbor_pattern
+
+    @neighbor_pattern.setter
+    def neighbor_pattern(self, neighbor_pattern: NeighborPattern):
+        self._neighbor_pattern = neighbor_pattern
+        self.neighbor_pattern_perms = tuple(permutations(neighbor_pattern))
+
+    def match(
+        self,
+        neighbor_idxs: Sequence[int],
+        neighbor_specs: Sequence[NeighborSpec],
+        center: Optional[str] = None,
+    ) -> List[Tuple[Vector]]:
+        """
+        Determines if an atom matches an atom placement pattern
+        from its list of neighbor specifications.
+
+        If at least one match is found, then a list of tuples are provided.
+        Each tuple is a sequence of vectors in the same order
+        as the provided neighbor indices, each vector indicating the
+        direction from the center atom to the corresponding neighbor.
+
+        If no matches are found, then an empty is returned.
+
+        :param neighbor_idxs: _description_
+        :type neighbor_idxs: Sequence[int]
+        :param neighbor_specs: _description_
+        :type neighbor_specs: Sequence[NeighborSpec]
+        :raises ValueError: _description_
+        :return: _description_
+        :rtype: List[Tuple[Vector]]
+        """
+        if len(neighbor_idxs) != len(neighbor_specs):
+            raise ValueError(
+                f"Number of neighbor indices ({len(neighbor_idxs)}) does not match "
+                f"the number of neighbor specs ({len(neighbor_specs)})"
+            )
+        # Check centers if center is provided
+        if center is not None and self.center != center:
+            return []
+        # Check if the number of neighbors is the same as the number of vectors
+        # in the atom pattern
+        if len(neighbor_idxs) != len(self.neighbor_pattern):
+            return []
+        neighbor_vectors_list = []
+        for neighbor_pattern in self.neighbor_pattern_perms:
+            if all(
+                (atom_neighbor_spec, pattern_neighbor_spec)
+                for atom_neighbor_spec, pattern_neighbor_spec in zip(
+                    neighbor_specs, (spec for spec, _ in neighbor_pattern)
+                )
+            ):
+                neighbor_vectors_list.append(tuple(vec for _, vec in neighbor_pattern))
+        return neighbor_vectors_list

@@ -9,9 +9,8 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 import random
-from collections import defaultdict
 from copy import deepcopy
-from itertools import combinations, cycle, permutations, product
+from itertools import combinations, cycle, permutations
 from typing import DefaultDict, Dict, Generator, List, Tuple
 
 import networkx as nx
@@ -19,18 +18,11 @@ import networkx as nx
 from ..consts import THIRTY_DEGS_IN_RADS
 from ..errors import DepicterError
 from ..models import Matrix, Vector
-from ..types import (
-    AtomPattern,
-    ConstraintsCandidates,
-    GraphCoordinates,
-    NeighborConstraints,
-    NeighborSpec,
-)
+from ..types import ConstraintsCandidates, GraphCoordinates, NeighborVectors
 from ..utils import (
     depiction_width,
     get_atom_attrs,
     neighbors,
-    none_iter,
     num_bond_order,
     num_heavy_atom_neighbors,
     prune_hydrogens,
@@ -69,85 +61,39 @@ def _is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
     )
 
 
-def _match_atom_pattern(
-    pattern: AtomPattern, neighbor_spec_to_count: Dict[NeighborSpec, int]
-) -> bool:
-    """
-    Returns if an atom pattern matches a neighbor spec count.
-
-    They match if the set of keys are equal, and the number of the vectors
-    for each neighbor spec matches the specified count.
-    """
-    return pattern.keys() == neighbor_spec_to_count.keys() and all(
-        len(pattern[key]) == neighbor_spec_to_count[key] for key in pattern
-    )
-
-
-def _find_atom_constraints(
+def find_atom_constraints(
     atom_index: int,
     graph: nx.Graph,
-) -> List[Tuple[NeighborConstraints, float]]:
+) -> List[Tuple[NeighborVectors, float]]:
     """
     Retrieves all possible atom constraints
     for the atom with the specified index in the specified graph.
     """
     # Determines element of atom
-    element = graph.nodes(data="element")[atom_index]
-    # Get neighbor data
-    neighbors_idxs = tuple(graph[atom_index])
-    if not neighbors_idxs:
+    element = graph.nodes[atom_index]["element"]
+    # Get neighbor indices
+    neighbor_idxs = tuple(graph[atom_index])
+    if not neighbor_idxs:
         # Atom has no neighbors
         return [({}, 1)]
-    neighbor_elements, neighbor_bond_orders = zip(
-        *(
-            (graph.nodes[u]["element"], graph[u][atom_index]["order"])
-            for u in neighbors_idxs
-        )
+    # Determine bond specifications
+    neighbor_specs = tuple(
+        (graph.nodes[u]["element"], graph[u][atom_index]["order"])
+        for u in neighbor_idxs
     )
-    # TODO: "X" for halogens
     patterns = ATOM_PATTERNS[element if element in ATOM_PATTERNS else None]
     # Determine candidates
-    candidates = []
-    # Iterate over possibilities of neighbor being connected via any bond
-    # or being any element
-    for neighbor_elements, neighbor_bond_orders in product(
-        none_iter(neighbor_elements), none_iter(neighbor_bond_orders)
-    ):
-        # Map (element, order) pairs to counts, and to list of indices
-        neighbor_spec_to_count = defaultdict(lambda: 0)
-        neighbor_spec_to_idxs = defaultdict(lambda: [])
-        for neighbor_idx, neighbor_element, neighbor_bond_order in zip(
-            neighbors_idxs, neighbor_elements, neighbor_bond_orders
-        ):
-            neighbor_spec = (neighbor_element, neighbor_bond_order)
-            neighbor_spec_to_idxs[neighbor_spec].append(neighbor_idx)
-            neighbor_spec_to_count[neighbor_spec] += 1
-        for pattern, weight in patterns:
-            if not _match_atom_pattern(pattern, neighbor_spec_to_count):
-                continue
-            new_candidate_patterns = [{}]
-            # Iterate over vectors for each neighbor spec
-            for neighbor_spec, vectors in pattern.items():
-                # Copy current partial new candidates
-                prev_candidate_patterns = new_candidate_patterns.copy()
-                new_candidate_patterns.clear()
-                neighbor_idxs = neighbor_spec_to_idxs[neighbor_spec]
-                # Iterate over each partial new candidate
-                for prev_candidate_pattern in prev_candidate_patterns:
-                    # Iterate over permutations of vectors
-                    for neighbor_idxs_perm in permutations(neighbor_idxs):
-                        new_candidate_pattern = prev_candidate_pattern.copy()
-                        for vector, neighbor_idx in zip(vectors, neighbor_idxs_perm):
-                            new_candidate_pattern[neighbor_idx] = vector
-                        if new_candidate_pattern not in new_candidate_patterns:
-                            new_candidate_patterns.append(new_candidate_pattern)
-            # Iterate over candidate patterns
-            for new_candidate_pattern in new_candidate_patterns:
-                candidate = (new_candidate_pattern, weight)
-                if candidate not in candidates:
-                    candidates.append(candidate)
+    candidates: List[Tuple[Tuple[Vector], float]] = []
+    # Iterate over possible patterns
+    for pattern in patterns:
+        vectors_list = pattern.match(neighbor_idxs, neighbor_specs)
+        if vectors_list:
+            candidates.extend((vectors, pattern.weight) for vectors in vectors_list)
 
-    return candidates
+    return [
+        ({idx: vector for idx, vector in zip(neighbor_idxs, vectors)}, weight)
+        for vectors, weight in candidates
+    ]
 
 
 def _find_chains(atoms: List[int], graph: nx.Graph) -> List[List[int]]:
@@ -400,7 +346,7 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
 
     # Determine atom constraints
     for atom_index in atoms:
-        patterns = _find_atom_constraints(atom_index, graph)
+        patterns = find_atom_constraints(atom_index, graph)
         if not patterns:
             raise DepicterError(
                 f"No candidate constraints found for atom with index {atom_index}"

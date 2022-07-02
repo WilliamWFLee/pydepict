@@ -8,7 +8,7 @@ Type aliases.
 Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for details.
 """
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from .models import Vector
 
@@ -21,10 +21,10 @@ Chain = Tuple[List[Atom], List[Bond]]
 Rnum = Tuple[int, Optional[float]]
 Rnums = Dict[int, Rnum]
 NeighborSpec = Tuple[Optional[str], Optional[float]]
-NeighborPattern = Dict[NeighborSpec, Tuple[Vector, ...]]
+NeighborPattern = Set[Tuple[NeighborSpec, Vector]]
 NeighborVectors = Dict[int, Vector]
 AtomRnums = List[Tuple[int, Optional[float]]]
-AtomPatterns = Dict[Optional[str], List[Tuple[NeighborPattern, float]]]
+AtomPatternsDict = Dict[Optional[str], List[Tuple[NeighborPattern, float]]]
 ChainPattern = Tuple[Tuple[Vector, Vector], Dict[int, Tuple[Vector, ...]]]
 ConstraintsCandidates = Dict[
     Tuple[int],
