@@ -90,6 +90,11 @@ class DepictionConstraints:
             return (v, u), True
         return key, False
 
+    def __eq__(self, other: "DepictionConstraints") -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self._dict == other._dict
+
     def __contains__(self, key: Tuple[int, int]) -> bool:
         (u, v), _ = self._sort_key(key)
         return u in self._dict and v in self._dict[u]

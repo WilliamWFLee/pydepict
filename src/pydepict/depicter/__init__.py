@@ -39,6 +39,7 @@ from .consts import (
     CHAIN_PATTERN_UNITS,
     DEPICTION_SAMPLE_SIZE,
     EPSILON,
+    MAX_DEPICTION_SAMPLE_ATTEMPTS,
 )
 from .models import DepictionConstraints
 
@@ -409,10 +410,16 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
 
     # Produce constraint samples
     samples: List[DepictionConstraints] = []
-    for _ in range(DEPICTION_SAMPLE_SIZE):
+    attempts = 0
+    while (
+        len(samples) < DEPICTION_SAMPLE_SIZE
+        and attempts < MAX_DEPICTION_SAMPLE_ATTEMPTS
+    ):
         sample = DepictionConstraints()
-        if sample_constraints(sample, constraints_candidates):
+        if sample_constraints(sample, constraints_candidates) and sample not in samples:
             samples.append(sample)
+        attempts += 1
+
     if not samples:
         raise DepicterError("Could not satisfy constraints")
     # Convert constraints to Cartesian coordinates

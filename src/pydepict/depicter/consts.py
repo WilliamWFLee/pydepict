@@ -420,5 +420,6 @@ for meth in (Vector.x_reflect, Vector.y_reflect):
 # OTHER CONSTANTS
 
 CHAIN_ELEMENTS = frozenset("C N O S".split())
-DEPICTION_SAMPLE_SIZE = 100
+DEPICTION_SAMPLE_SIZE = 5
+MAX_DEPICTION_SAMPLE_ATTEMPTS = 200
 EPSILON = 0.0001
