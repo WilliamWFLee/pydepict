@@ -17,7 +17,7 @@ BondAttribute = Optional[Union[bool, str, int, float]]
 AtomAttribute = Optional[Union[bool, str, int, float, ChiralSpec]]
 Atom = Dict[str, AtomAttribute]
 Bond = Dict[str, BondAttribute]
-Chain = Tuple[List[Atom], List[Bond]]
+ParserChain = Tuple[List[Atom], List[Bond]]
 Rnum = Tuple[int, Optional[float]]
 Rnums = Dict[int, Rnum]
 NeighborSpec = Tuple[Optional[str], Optional[float]]
@@ -34,3 +34,4 @@ ConstraintsCandidates = Dict[
     ],
 ]
 GraphCoordinates = Dict[int, Vector]
+DepicterChain = List[int]

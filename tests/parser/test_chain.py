@@ -11,7 +11,7 @@ import pytest_mock
 
 from pydepict.errors import ParserError
 from pydepict.parser import new_atom, new_bond, parse_atom, parse_bond, parse_chain
-from pydepict.types import Chain
+from pydepict.types import ParserChain
 
 from .utils import apply_stream_parse_method, patch_parse_method
 
@@ -101,7 +101,7 @@ def chain(
     request: pytest.FixtureRequest,
     mocker: pytest_mock.MockerFixture,
     prev_aromatic: bool,
-) -> Chain:
+) -> ParserChain:
     atoms, bonds = request.param
     atoms = [new_atom(**atom) for atom in atoms]
 
@@ -133,7 +133,7 @@ def chain(
     return atoms, new_bonds
 
 
-def test_valid_chain(chain: Chain, prev_aromatic: bool):
+def test_valid_chain(chain: ParserChain, prev_aromatic: bool):
     atoms, bonds = apply_stream_parse_method(parse_chain, "a", prev_aromatic)
     assert [atom for atom, _ in atoms[1:]] == chain[0]
     assert bonds == chain[1]

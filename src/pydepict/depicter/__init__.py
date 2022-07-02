@@ -11,6 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 import random
 from copy import deepcopy
 from itertools import combinations, cycle, permutations
+from time import perf_counter
 from typing import DefaultDict, Dict, Generator, List, Tuple
 
 import networkx as nx
@@ -18,7 +19,12 @@ import networkx as nx
 from ..consts import THIRTY_DEGS_IN_RADS
 from ..errors import DepicterError
 from ..models import Matrix, Vector
-from ..types import ConstraintsCandidates, GraphCoordinates, NeighborVectors
+from ..types import (
+    ConstraintsCandidates,
+    DepicterChain,
+    GraphCoordinates,
+    NeighborVectors,
+)
 from ..utils import (
     depiction_width,
     get_atom_attrs,
@@ -40,7 +46,7 @@ from .models import DepictionConstraints
 __all__ = ["depict"]
 
 
-def _is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
+def is_chain_atom(atom_index: int, graph: nx.Graph) -> bool:
     """
     Determines whether or not the specified atom in the specified graph
     is a chain atom (i.e. eligible to be treated as being in a chain).
@@ -96,39 +102,60 @@ def find_atom_constraints(
     ]
 
 
-def _find_chains(atoms: List[int], graph: nx.Graph) -> List[List[int]]:
+def find_longest_chain_from(
+    start: int, chain_atoms: List[int], graph: nx.Graph
+) -> DepicterChain:
+    """
+    Finds the longest chain starting from the specified atom index.
+
+    :param start: The atom to start from.
+    :type start: int
+    :param chain_atoms: A list of chains atoms that can be used
+                        for forming new chains.
+    :type chain_atoms: List[int]
+    :param graph: The graph to use to retrieve molecular graph information.
+    :type graph: nx.Graph
+    """
+    start_neighbors = (
+        atom_index
+        for atom_index in graph[start]
+        if is_chain_atom(atom_index, graph) and atom_index in chain_atoms
+    )
+    chains = []
+    for neighbor_idx in start_neighbors:
+        next_chain_atoms = chain_atoms.copy()
+        next_chain_atoms.remove(start)
+        chains.append(
+            find_longest_chain_from(neighbor_idx, next_chain_atoms, graph)
+        )
+    if not chains:
+        return []
+    return [start] + max(chains, key=lambda x: len(x))
+
+
+def find_chains(chain_atoms: List[int], graph: nx.Graph) -> List[DepicterChain]:
     """
     Finds all chains in a graph.
+
+    This is a greedy algorithm that is not guaranteed
+    to find the optimal set of longest chains.
+
+    :param atoms: A list of chain atom indices that are can be used for chaining.
+    :type atoms: List[int]
+    :param graph: The molecular graph to retrieve chemical information from.
+    :type graph: nx.Graph
+    :return: A list of lists, each inner list being a single chain,
+             represented as a list of atom indices.
+    :rtype: List[List[int]]
     """
-    unchained_chain_atoms = [
-        atom_index for atom_index in atoms if _is_chain_atom(atom_index, graph)
-    ]
     chains = []
-    while len(unchained_chain_atoms) >= 4:
-        possible_chains = []
-        for u, v in permutations(unchained_chain_atoms, r=2):
-            if not nx.has_path(graph, u, v):
-                continue
-            possible_chains.extend(nx.all_simple_paths(graph, u, v))
-        if not possible_chains:
-            # No chains possible
+    while len(chain_atoms) > 4:
+        chain = find_longest_chain_from(chain_atoms[0], chain_atoms, graph)
+        if not chain:
             break
-        possible_chains = list(
-            filter(
-                lambda chain: all(u in unchained_chain_atoms for u in chain),
-                possible_chains,
-            )
-        )
-        if not possible_chains:
-            # No chains that contains atoms that are not in chains already
-            break
-        # Select the longest chain
-        longest_chain = max(*possible_chains, key=lambda chain: len(chain))
-        if len(longest_chain) < 4:
-            break
-        chains.append(longest_chain)
-        for atom_index in longest_chain:
-            unchained_chain_atoms.remove(atom_index)
+        for atom_index in chain:
+            chain_atoms.remove(atom_index)
+        chains.append(chain)
 
     return chains
 
@@ -161,7 +188,7 @@ def _find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCan
     """
     Returns a set of constraints for chains.
     """
-    chains = _find_chains(atoms, graph)
+    chains = find_chains([atom for atom in atoms if is_chain_atom(atom, graph)], graph)
     candidates: ConstraintsCandidates = {}
     for chain in chains:
         patterns = []
