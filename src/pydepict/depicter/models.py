@@ -12,6 +12,8 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 from itertools import permutations
 from typing import DefaultDict, Dict, List, Optional, Sequence, Tuple
 
+from pydepict.utils import neighbor_spec_match
+
 from ..models import Vector
 from ..types import NeighborPattern, NeighborSpec
 
@@ -209,7 +211,7 @@ class AtomPattern:
         neighbor_vectors_list = []
         for neighbor_pattern in self.neighbor_pattern_perms:
             if all(
-                (atom_neighbor_spec, pattern_neighbor_spec)
+                neighbor_spec_match(atom_neighbor_spec, pattern_neighbor_spec)
                 for atom_neighbor_spec, pattern_neighbor_spec in zip(
                     neighbor_specs, (spec for spec, _ in neighbor_pattern)
                 )
