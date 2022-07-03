@@ -10,6 +10,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 
 from typing import Dict, Optional, Tuple
 
+from ..models import Sentinel
 from ..types import AtomAttribute, BondAttribute
 
 # PARSER ELEMENT SYMBOLS
@@ -88,5 +89,4 @@ DEFAULT_ATOM: Dict[str, AtomAttribute] = {
 }
 DEFAULT_BOND: Dict[str, BondAttribute] = {"order": 1}
 
-# Sentinel object
-EXPECT_DEFAULT = object()
+EXPECT_NO_DEFAULT = Sentinel("NO_DEFAULT")

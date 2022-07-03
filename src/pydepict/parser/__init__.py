@@ -29,7 +29,7 @@ from .consts import (
     DEFAULT_BOND,
     ELEMENT_SYMBOL_FIRST_CHARS,
     ELEMENT_SYMBOLS,
-    EXPECT_DEFAULT,
+    EXPECT_NO_DEFAULT,
     ORGANIC_SYMBOL_FIRST_CHARS,
     ORGANIC_SYMBOLS,
     TERMINATORS,
@@ -253,7 +253,7 @@ def expect(
     stream: Stream[str],
     symbols: Iterable[str],
     terminal: Optional[str] = None,
-    default: Union[str, object] = EXPECT_DEFAULT,
+    default: Union[str, object] = EXPECT_NO_DEFAULT,
 ) -> Union[str, object]:
     """
     Expect the next string in the specified stream to be any character
@@ -277,7 +277,7 @@ def expect(
     try:
         peek = stream.peek()
     except StopIteration:
-        if default != EXPECT_DEFAULT:
+        if default != EXPECT_NO_DEFAULT:
             return default
         else:
             raise new_exception("Unexpected end-of-stream", stream)

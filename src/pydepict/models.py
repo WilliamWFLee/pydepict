@@ -9,22 +9,37 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 from math import cos, sin, sqrt
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    List,
-    NamedTuple,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Callable, Generic, Iterable, List, NamedTuple, Tuple, TypeVar, Union
 
 from .consts import THIRTY_DEGS_IN_RADS, VECTOR_NAMES
 
 __all__ = ["Stream", "Matrix", "Vector"]
 
 T = TypeVar("T")
+
+
+class Sentinel:
+    """
+    Class for representing sentinel objects, for example for the ends of sequences,
+    or as a default argument where standard default arguments are not suitable.
+
+    Sentinels are given a name, and it's encouraged that constant case is used::
+
+    >>> Sentinel("DEFAULT")
+
+    Different instantiations of sentinels with the same name are not equal::
+
+    >>> Sentinel("DEFAULT") == Sentinel("DEFAULT")
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __str__(self) -> str:
+        return f"Sentinel.{self.name}"
+
+    def __repr__(self) -> str:
+        return f"Sentinel({self.name!r})"
 
 
 class Stream(Generic[T]):
@@ -46,7 +61,7 @@ class Stream(Generic[T]):
         :type: int
     """
 
-    DEFAULT = object()
+    DEFAULT = Sentinel("DEFAULT")
 
     def __init__(self, content: Iterable[T]) -> None:
         self._iter = iter(content)
