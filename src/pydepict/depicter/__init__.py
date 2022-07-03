@@ -11,7 +11,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 import random
 from copy import deepcopy
 from itertools import combinations, cycle
-from typing import DefaultDict, Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import networkx as nx
 
@@ -74,6 +74,15 @@ def find_atom_constraints(
     """
     Retrieves all possible atom constraints
     for the atom with the specified index in the specified graph.
+
+    :param atom_index: The index of the atom to identify constraints for.
+    :type atom_index: int
+    :param graph: The graph to use to retrieve molecular graph information.
+    :type graph: nx.Graph
+    :return: A list of 2-tuples, the first element of each is a dictionary
+             of vectors mapping the neighbor index to the vector
+             from the atom to the neighbor of that index,
+             and the second element is the sampling weight.
     """
     # Determines element of atom
     element = graph.nodes[atom_index]["element"]
@@ -209,7 +218,15 @@ def chain_neighbors(
 
 def find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCandidates:
     """
-    Returns a set of constraints for chains.
+    Finds chains within the molecular graph, and returns a set of constraints
+    for those chains.
+
+    :param atoms: A list of available atom indices for chains.
+    :type atoms: List[int]
+    :param graph: The graph to retrieve molecular graph information from.
+    :type graph: nx.Graph
+    :return: A dictionary of constraints candidates.
+    :rtype: ConstraintsCandidates.
     """
     chains = find_chains([atom for atom in atoms if is_chain_atom(atom, graph)], graph)
     candidates: ConstraintsCandidates = {}
@@ -239,16 +256,29 @@ def find_chain_constraints(atoms: List[int], graph: nx.Graph) -> ConstraintsCand
 
 
 def remove_conflicting_constraints(
-    u: int,
-    v: int,
+    endpoints: Tuple[int, int],
     vector: Vector,
     constraints_candidates: ConstraintsCandidates,
-) -> None:
+) -> bool:
     """
-    Removes constraints candidate conflicts.
+    Removes conflicting constraints candidates from a constraints candidates dictionary,
+    given a chosen vector between two nodes, and returns a boolean indicating
+    if there is at least one constraint candidate left for every block.
 
-    Returns whether there are constraints left for all blocks.
+    :param endpoints: The nodes between which the vector has been fixed,
+    :type endpoints: Tuple[int, int]
+    :param vector: The vector between :param:`endpoints`, from the first element
+                   to the second element.
+    :type vector: Vector
+    :param constraints_candidates: The dictionary of constraints candidates
+                                   that is searched in order to find conflicting
+                                   candidate constraints.
+    :type constraints_candidates: ConstraintsCandidates.
+    :return: A boolean indicating whether there exists
+             at least one constraints candidate for every block.
+    :rtype: bool
     """
+    u, v = endpoints
     for block, (patterns, weights) in constraints_candidates.items():
         if v not in block:
             continue
@@ -268,12 +298,19 @@ def remove_conflicting_constraints(
 
 
 def sample_constraints(
-    sample: DepictionConstraints,
     constraints_candidates: ConstraintsCandidates,
-) -> None:
+) -> Optional[DepictionConstraints]:
     """
-    Adds non-conflicting constraints to depiction sample.
+    Samples constraints from a constraints candidates dictionary,
+    and returns a new depiction constraints sample.
+
+    :param constraints_candidates: The dictionary of constraints candidates
+                                   to sample constraints from.
+    :type constraints_candidates: ConstraintsCandidates
+    :return: The constraints sample produced, or :data:`None` if sampling failed.
+    :rtype: Optional[DepictionConstraints]
     """
+    sample = DepictionConstraints()
     candidates_copy = deepcopy(constraints_candidates)
     # Shuffle order in which fragments are considered
     blocks = list(constraints_candidates.keys())
@@ -295,19 +332,27 @@ def sample_constraints(
                 sample[u, v] = vector
                 # Remove conflicting constraints
                 constraints_left = remove_conflicting_constraints(
-                    u, v, vector, candidates_copy
+                    (u, v), vector, candidates_copy
                 )
                 if not constraints_left:
-                    return False
-    return True
+                    return None
+    return sample
 
 
 def apply_depiction_sample(
     graph: nx.Graph, constraints: DepictionConstraints
-) -> Dict[int, Vector]:
+) -> GraphCoordinates:
     """
     Applies constraints to a graph to produce a dictionary mapping atom index
     to the position vector of that atom.
+
+    :param graph: The graph to use to perform a depth-first tree traversal
+    :type graph: nx.Graph
+    :param constraints: The constraints to apply in order to build
+                        the dictionary of coordinates.
+    :type constraints: DepictionConstraints
+    :return: The dictionary of atom positions.
+    :rtype: GraphCoordinates
     """
     coordinates = {0: Vector(0, 0)}
     for u, v in nx.dfs_edges(graph, source=0):
@@ -316,20 +361,30 @@ def apply_depiction_sample(
     return coordinates
 
 
-def sample_congestion(
-    sample: Dict[int, Vector],
-    weights: DefaultDict[int, float],
+def depiction_coordinates_congestion(
+    coordinates: GraphCoordinates,
+    weights: Dict[int, float],
     graph: nx.Graph,
-):
+) -> float:
     """
-    Calculates the congestion of the sample.
+    Calculates the congestion from the set of coordinates for a sample,
+    and the graph that it describes.
+
+    :param coordinates: The dictionary of depiction coordinates.
+    :type coordinates: GraphCoordinates
+    :param weights: A dictionary mapping each atom to the weight of the constraint
+                    that determined its placement.
+    :type weights: Dict[int, float]
+    :return: The congestion as a float:
+             the higher the number, the highest the congestion.
+    :rtype: float
     """
     congestion = 0
     for component in nx.connected_components(graph):
         for u, v in combinations(component, 2):
             if not graph.has_edge(u, v):
                 congestion += 1 / (
-                    (Vector.distance(sample[u], sample[v]) + EPSILON) ** 2
+                    (Vector.distance(coordinates[u], coordinates[v]) + EPSILON) ** 2
                     * weights[u]
                     * weights[v]
                 )
@@ -338,25 +393,36 @@ def sample_congestion(
 
 
 def select_best_sample(
-    coordinates_samples_with_weights: List[Tuple[Dict[int, Vector], Dict[int, float]]],
+    samples_with_weights: List[Tuple[GraphCoordinates, Dict[int, float]]],
     graph: nx.Graph,
-) -> Dict[int, Vector]:
+) -> GraphCoordinates:
     """
-    Selects the best sample from a list of dictionaries of coordinate samples.
+    Selects the best depiction sample from a list of dictionaries
+    of coordinate samples, and returns it.
+
+    :param samples_with_weights: A list of 2-tuples coordinate samples with weights.
+                                 The first element of each tuple is a graph coordinates
+                                 dictionary; the second element is a sampling weight
+                                 dictionary.
+    :type samples_with_weights: List[Tuple[GraphCoordinates], Dict[int, float]]]
+    :return: The best sample, as determined by congestion.
+    :rtype: GraphCoordinates
     """
     best_sample, _ = min(
-        coordinates_samples_with_weights,
-        key=lambda sample_with_weight: sample_congestion(*sample_with_weight, graph),
+        samples_with_weights,
+        key=lambda sample_with_weight: depiction_coordinates_congestion(
+            *sample_with_weight, graph
+        ),
     )
     return best_sample
 
 
-def maximize_sample_width(sample: Dict[int, Vector]):
+def maximize_sample_width(sample: GraphCoordinates):
     """
-    Rotates a depiction sample such that its width is maximized.
+    Rotates a depiction sample in place such that its width is maximized.
 
     :param sample: The sample whose width should be maximised.
-    :type sample: Dict[int, Vector]
+    :type sample: GraphCoordinates
     """
     matrices = [Matrix.rotate(THIRTY_DEGS_IN_RADS * i) for i in range(12)]
     widest_sample = max(
@@ -371,7 +437,10 @@ def maximize_sample_width(sample: Dict[int, Vector]):
 
 def postprocess_sample(sample: GraphCoordinates):
     """
-    Postprocesses a sample dictionary to produce the final depiction.
+    Postprocesses a depiction sample to produce the final depiction.
+
+    :param sample: The dictionary of coordinates to postprocess
+    :type sample: GraphCoordinates
     """
     maximize_sample_width(sample)
 
@@ -415,8 +484,8 @@ def depict(graph: nx.Graph) -> GraphCoordinates:
         len(samples) < DEPICTION_SAMPLE_SIZE
         and attempts < MAX_DEPICTION_SAMPLE_ATTEMPTS
     ):
-        sample = DepictionConstraints()
-        if sample_constraints(sample, constraints_candidates) and sample not in samples:
+        sample = sample_constraints(constraints_candidates)
+        if sample is not None and sample not in samples:
             samples.append(sample)
         attempts += 1
 

@@ -9,7 +9,7 @@ Copyright (c) 2022 William Lee and The University of Sheffield. See LICENSE for 
 """
 
 import datetime as dt
-from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
+from typing import Iterable, List, Optional, Tuple, TypeVar, Union
 
 import networkx as nx
 
@@ -244,18 +244,18 @@ def average_depicted_bond_length(graph: nx.Graph, positions: GraphCoordinates) -
     return total_distance / len(graph.edges)
 
 
-def depiction_width(sample: Dict[int, Vector]) -> float:
+def depiction_width(coordinates: GraphCoordinates) -> float:
     """
     Calculates the depicted width of a depiction sample,
     calculated as the difference between the lowest and highest x coordinates.
 
     :param sample: The depiction sample
-    :type sample: Dict[int, Vector]
+    :type sample: GraphCoordinates
     :return: The depicted width
     :rtype: float
     """
-    min_x = min(vector.x for vector in sample.values())
-    max_x = max(vector.x for vector in sample.values())
+    min_x = min(vector.x for vector in coordinates.values())
+    max_x = max(vector.x for vector in coordinates.values())
     return max_x - min_x
 
 
