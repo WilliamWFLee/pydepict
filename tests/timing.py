@@ -13,7 +13,7 @@ from pydepict import parse, depict, Renderer  # noqa:F401
 
 REPEATING_UNIT = "C(Br)"
 MAX_REPEATING_UNITS = 50
-NUM_REPEATS = 10
+NUM_REPEATS = 50
 
 
 def time_string(smiles: str) -> Tuple[float, float, float]:
