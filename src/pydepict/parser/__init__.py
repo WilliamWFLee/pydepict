@@ -388,9 +388,9 @@ def parse_chiral(stream: Stream[str]) -> Tuple[Optional[str], int]:
     """
     Parses an atomic chirality specification from the specified stream.
 
-    The code is the name given to the two-character alphabetic sequence
-    specifying the type of chirality, and the index is the name given
-    to the one- or two-digit number that follows the code.
+    The code is the two-character alphabetic sequence
+    specifying the type of chirality, and the index
+    is the one- or two-digit number that follows the code.
 
     If shorthand chirality, i.e. @ or @@, is used, the code returned is :data:`None`,
     leaving the code to be determined semantically.
@@ -414,7 +414,9 @@ def parse_chiral(stream: Stream[str]) -> Tuple[Optional[str], int]:
         return None, 1
 
     # Code, i.e. TB, AL, SP, TB, OH
-    code = next(stream)
+    code = next(stream, "")
+    if not code:
+        raise new_exception("Expected chirality code", stream)
     code += stream.peek("")
     if code not in CHIRALITY_CODES:
         raise new_exception(f"Unknown chirality code {code!r}", stream)
